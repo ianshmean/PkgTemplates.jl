@@ -1,8 +1,10 @@
 """
     Template(; kwargs...) -> Template
+    Template(t::Template; kwargs...) -> Template
 
 Records common information used to generate a package. If you don't wish to manually
-create a template, you can use [`interactive_template`](@ref) instead.
+create a template, you can use [`interactive_template`](@ref) instead. If a `Template`
+is passed as the first argument, its fields are used as defaults.
 
 # Keyword Arguments
 * `user::AbstractString=""`: GitHub (or other code hosting service) username. If left
@@ -78,13 +80,28 @@ create a template, you can use [`interactive_template`](@ref) instead.
 
         dir = abspath(expanduser(dir))
 
-        plugin_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
-        if (length(plugins) != length(plugin_dict))
+        p_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
+        if (length(plugins) != length(p_dict))
             @warn "Plugin list contained duplicates, only the last of each type was kept"
         end
 
-        new(user, host, license, authors, dir, julia_version, ssh, manifest, plugin_dict)
+        return new(user, host, license, authors, dir, julia_version, ssh, manifest, p_dict)
     end
+end
+
+function Template(t::Template; kwargs...)
+    kwargs = merge(Dict(
+        :user => t.user,
+        :host => t.host,
+        :license => t.license,
+        :authors => t.authors,
+        :dir => t.dir,
+        :julia_version => t.julia_version,
+        :ssh => t.ssh,
+        :manifest => t.manifest,
+        :plugins => collect(values(t.plugins)),
+    ), kwargs)
+    return Template(; kwargs...)
 end
 
 function Base.show(io::IO, t::Template)
