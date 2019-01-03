@@ -5,7 +5,7 @@ pkg_dir = joinpath(t.dir, test_pkg)
     @testset "Plugin creation" begin
         p = TravisCI()
         @test isempty(p.gitignore)
-        @test p.src == joinpath(PkgTemplates.DEFAULTS_DIR, "travis.yml")
+        @test p.src == joinpath(DEFAULTS_DIR, "travis.yml")
         @test p.dest == ".travis.yml"
         @test p.badges == [
             Badge(

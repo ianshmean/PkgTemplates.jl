@@ -24,7 +24,7 @@ struct GitHubPages <: Documenter
             end
         end
         # Windows Git recognizes these paths as well.
-        new(["/docs/build/", "/docs/site/"], abspath.(assets))
+        return new(["/docs/build/", "/docs/site/"], abspath.(assets))
     end
 end
 

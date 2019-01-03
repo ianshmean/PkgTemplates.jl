@@ -16,16 +16,16 @@ struct AppVeyor <: GenericPlugin
     view::Dict{String, Any}
 
     function AppVeyor(; config_file::Union{AbstractString, Nothing}="")
-        if config_file != nothing
+        if config_file !== nothing
             config_file = if isempty(config_file)
-                config_file = joinpath(DEFAULTS_DIR, "appveyor.yml")
+                joinpath(DEFAULTS_DIR, "appveyor.yml")
             elseif isfile(config_file)
                 abspath(config_file)
             else
                 throw(ArgumentError("File $(abspath(config_file)) does not exist"))
             end
         end
-        new(
+        return new(
             [],
             config_file,
             ".appveyor.yml",
@@ -34,7 +34,7 @@ struct AppVeyor <: GenericPlugin
                     "Build Status",
                     "https://ci.appveyor.com/api/projects/status/github/{{USER}}/{{PKGNAME}}.jl?svg=true",
                     "https://ci.appveyor.com/project/{{USER}}/{{PKGNAME}}-jl",
-                )
+                ),
             ],
             Dict{String, Any}(),
         )

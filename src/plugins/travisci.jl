@@ -16,16 +16,16 @@ struct TravisCI <: GenericPlugin
     view::Dict{String, Any}
 
     function TravisCI(; config_file::Union{AbstractString, Nothing}="")
-        if config_file != nothing
+        if config_file !== nothing
             config_file = if isempty(config_file)
-                config_file = joinpath(DEFAULTS_DIR, "travis.yml")
+                joinpath(DEFAULTS_DIR, "travis.yml")
             elseif isfile(config_file)
                 abspath(config_file)
             else
                 throw(ArgumentError("File $(abspath(config_file)) does not exist"))
             end
         end
-        new(
+        return new(
             [],
             config_file,
             ".travis.yml",

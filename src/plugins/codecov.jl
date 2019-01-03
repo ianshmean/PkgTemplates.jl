@@ -17,14 +17,14 @@ struct Codecov <: GenericPlugin
     view::Dict{String, Any}
 
     function Codecov(; config_file::Union{AbstractString, Nothing}=nothing)
-        if config_file != nothing
+        if config_file !== nothing
             config_file = if isfile(config_file)
                 abspath(config_file)
             else
                 throw(ArgumentError("File $(abspath(config_file)) does not exist"))
             end
         end
-        new(
+        return new(
             ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"],
             config_file,
             ".codecov.yml",

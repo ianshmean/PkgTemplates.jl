@@ -5,7 +5,7 @@ pkg_dir = joinpath(t.dir, test_pkg)
     @testset "Plugin creation" begin
         p = AppVeyor()
         @test isempty(p.gitignore)
-        @test p.src == joinpath(PkgTemplates.DEFAULTS_DIR, "appveyor.yml")
+        @test p.src == joinpath(DEFAULTS_DIR, "appveyor.yml")
         @test p.dest == ".appveyor.yml"
         @test p.badges == [
             Badge(

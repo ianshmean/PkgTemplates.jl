@@ -18,9 +18,9 @@ struct GitLabCI <: GenericPlugin
     view::Dict{String, Any}
 
     function GitLabCI(; config_file::Union{AbstractString, Nothing}="", coverage::Bool=true)
-        if config_file != nothing
+        if config_file !== nothing
             config_file = if isempty(config_file)
-                config_file = joinpath(DEFAULTS_DIR, "gitlab-ci.yml")
+                joinpath(DEFAULTS_DIR, "gitlab-ci.yml")
             elseif isfile(config_file)
                 abspath(config_file)
             else
@@ -34,18 +34,13 @@ struct GitLabCI <: GenericPlugin
                 "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
             ),
         ]
-        if coverage
-            push!(
-                badges,
-                Badge(
-                    "Coverage",
-                    "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
-                    "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
-                ),
-            )
-        end
+        coverage && push!(badges, Badge(
+            "Coverage",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
+        ))
 
-        new(
+        return new(
             coverage ? ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] : [],
             config_file,
             ".gitlab-ci.yml",
