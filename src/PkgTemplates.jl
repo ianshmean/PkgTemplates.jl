@@ -22,6 +22,7 @@ export
     AppVeyor,
     TravisCI,
     GitLabCI,
+    CirrusCI,
     Codecov,
     Coveralls
 
@@ -41,6 +42,7 @@ include(joinpath("plugins", "appveyor.jl"))
 include(joinpath("plugins", "codecov.jl"))
 include(joinpath("plugins", "travisci.jl"))
 include(joinpath("plugins", "gitlabci.jl"))
+include(joinpath("plugins", "cirrusci.jl"))
 include(joinpath("plugins", "githubpages.jl"))
 
 const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
