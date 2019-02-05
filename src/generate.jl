@@ -343,12 +343,18 @@ function substitute(
         "CODECOV" => haskey(pkg_template.plugins, Codecov),
         "COVERALLS" => haskey(pkg_template.plugins, Coveralls),
     )
+
     # d["AFTER"] is true whenever something needs to occur in a CI "after_script".
     d["AFTER"] = d["DOCUMENTER"] || d["CODECOV"] || d["COVERALLS"]
+
     # d["COVERAGE"] is true whenever a coverage plugin is enabled.
     # TODO: This doesn't handle user-defined coverage plugins.
     # Maybe we need an abstract CoveragePlugin <: GenericPlugin?
-    d["COVERAGE"] = d["CODECOV"] || d["COVERALLS"]
+    d["COVERAGE"] = |(
+        d["CODECOV"],
+        d["COVERALLS"],
+        haskey(pkg_template.plugins, GitLabCI) && pkg_template.plugins[GitLabCI].coverage,
+    )
     return substitute(template, merge(d, view))
 end
 

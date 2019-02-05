@@ -11,16 +11,54 @@ badges(p::GeneratedPlugin) = p.badges
 view(p::GeneratedPlugin) = p.view
 
 """
-    @plugin T src => dest opts...
+    @plugin T src => dest attr::type[=default]... opts...
 
-Generate a basic plugin which manages a single config file.
+Generate a basic plugin which manages a single configuration file.
+
+# Arguments
+* `T`: The name of the plugin to generate.
+* `src => dest`: Defines the plugin's configuration file. The key is the path to the
+  default configuration file, or `nothing` if the default is no file. The value is the
+  destination path, relative to the root of generated packages.
+* `attr::type[=default]...`: Extra attributes for the generated plugin. They are exposed
+  via keyword arguments (optional if a default is provided, otherwise not).
+
+# Keyword Arguments
+* `gitignore::Vector{<:AbstractString}=[]`: List of patterns to be added to the
+  `.gitignore` of generated packages.
+* `badges::Vector{Badge}=[]`: List of [`Badge`](@ref)s to be added to the `README.md` of
+  generated packages.
+* `view::Dict{String. Any}=Dict()`: Additional substitutions to be made in both the
+  plugin's badges and its configuration file. See [`substitute`](@ref) for details.
 """
-macro plugin(T, src_dest, kws...)
+macro plugin(T, src_dest, exs...)
     src, dest = eval.(src_dest.args[2:3])
-    opts = merge(
-        Dict(:gitignore => String[], :badges => Badge[], :view => Dict()),
-        Dict(k => eval(v) for (k, v) in getfield.(kws, :args)),
-    )
+
+    attrs = Expr[]  # Attribute expressions, e.g. x::Bool.
+    kws = Expr[]  # Keyword expressions, e.g. x::Bool or x::Bool=true.
+    names = Symbol[]  # Attribute names, e.g. x.
+    opts = Dict(:gitignore => [], :badges => [], :view => Dict())
+
+    for ex in exs
+        if ex.head === :(::)
+            # Extra attribute with no default (mandatory keyword).
+            push!(attrs, ex)
+            push!(kws, ex)
+            push!(names, ex.args[1])
+        elseif ex.head === :(=)
+            if ex.args[1] isa Symbol
+                # Plugin option.
+                opts[ex.args[1]] = eval(ex.args[2])
+            else
+                # Extra attribute with a default argument.
+                push!(attrs, ex.args[1])
+                push!(kws, Expr(:kw, ex.args[1], ex.args[2]))
+                push!(names, ex.args[1].args[1])
+            end
+        else
+            throw(ArgumentError(repr(ex)))
+        end
+    end
 
     gitignore = opts[:gitignore]
     badges = opts[:badges]
@@ -33,18 +71,20 @@ macro plugin(T, src_dest, kws...)
             gitignore::Vector{String}
             badges::Vector{Badge}
             view::Dict{String, Any}
+            $(attrs...)
 
-            function $(esc(T))(; file::Union{AbstractString, Nothing}=$src)
+            function $(esc(T))(; file::Union{AbstractString, Nothing}=$src, $(map(esc, kws)...))
                 if file !== nothing && !isfile(file)
                     throw(ArgumentError("File $(abspath(file)) does not exist"))
                 end
-                return new(file, $dest, $gitignore, $badges, $view)
+                return new(file, $dest, $gitignore, $badges, $view, $(map(esc, names)...))
             end
         end
 
-        PkgTemplates.interactive(::Type{$(esc(T))}) = interactive($(esc(T)); file=$src)
+        function PkgTemplates.interactive(::Type{$(esc(T))})
+            return PkgTemplates.interactive($(esc(T)); file=$src)
+        end
     end
-
 end
 
 """
@@ -194,7 +234,7 @@ abstract type CustomPlugin <: Plugin end
 """
     Badge(hover::AbstractString, image::AbstractString, link::AbstractString) -> Badge
 
-A `Badge` contains the data necessary to generate a Markdown badge.
+Container for Markdown badge data.
 
 # Arguments
 * `hover::AbstractString`: Text to appear when the mouse is hovered over the badge.
@@ -262,7 +302,7 @@ function badges(p::GenericPlugin, user::AbstractString, pkg_name::AbstractString
 end
 
 """
-    interactive(T::Type{<:Plugin}; file::Union{AbstractString, Nothing}="") -> Plugin
+    interactive(T::Type{<:Plugin}; file::Union{AbstractString, Nothing}="") -> T
 
 Interactively create a plugin of type `T`, where `file` is the plugin type's default
 config template with a non-standard name (for `MyPlugin`, this is anything but
@@ -293,3 +333,43 @@ function interactive(T::Type{<:GenericPlugin}; file::Union{AbstractString, Nothi
 
     return T(; config_file=config_file)
 end
+
+@plugin AppVeyor default_file("appveyor.yml") => ".appveyor.yml" badges=[Badge(
+    "Build Status",
+    "https://ci.appveyor.com/api/projects/status/github/{{USER}}/{{PKGNAME}}.jl?svg=true",
+    "https://ci.appveyor.com/project/{{USER}}/{{PKGNAME}}-jl",
+)]
+
+@plugin Codecov nothing => ".codecov.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=[Badge(
+    "Coverage",
+    "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl/branch/master/graph/badge.svg",
+    "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl",
+)]
+
+@plugin Coveralls nothing => ".coveralls.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=[Badge(
+    "Coverage",
+    "https://coveralls.io/repos/github/{{USER}}/{{PKGNAME}}.jl/badge.svg?branch=master",
+    "https://coveralls.io/github/{{USER}}/{{PKGNAME}}.jl?branch=master",
+)]
+
+@plugin GitLabCI default_file("gitlab-ci.yml") => ".gitlab-ci.yml" coverage::Bool=true
+gitignore(p::GitLabCI) = p.coverage ? ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] : String[]
+function badges(p::GitLabCI)
+    bs = [Badge(
+        "Build Status",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
+    )]
+    p.coverage && push!(bs, Badge(
+        "Coverage",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
+    ))
+    return bs
+end
+
+@plugin TravisCI default_file("travis.yml") => ".travis.yml" badges=[Badge(
+    "Build Status",
+    "https://travis-ci.com/{{USER}}/{{PKGNAME}}.jl.svg?branch=master",
+    "https://travis-ci.com/{{USER}}/{{PKGNAME}}.jl",
+)]

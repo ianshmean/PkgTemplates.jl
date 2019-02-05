@@ -26,6 +26,9 @@ export
     Codecov,
     Coveralls
 
+const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
+default_file(file::AbstractString) = joinpath(DEFAULTS_DIR, file)
+
 """
 A plugin to be added to a [`Template`](@ref), which adds some functionality or integration.
 New plugins should almost always extend [`GenericPlugin`](@ref) or [`CustomPlugin`](@ref).
@@ -45,7 +48,6 @@ include(joinpath("plugins", "gitlabci.jl"))
 include(joinpath("plugins", "githubpages.jl"))
 include(joinpath("plugins", "gitlabpages.jl"))
 
-const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
 const BADGE_ORDER = [GitHubPages, GitLabPages, TravisCI, AppVeyor, GitLabCI, Codecov, Coveralls]
 
 end
