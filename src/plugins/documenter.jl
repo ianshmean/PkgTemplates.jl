@@ -34,7 +34,9 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     end
 
     tab = repeat(" ", 4)
-    assets_string = if !isempty(p.assets)
+    assets_string = if isempty(p.assets)
+        "[]"
+    else
         mkpath(joinpath(docs_dir, "src", "assets"))
         for file in p.assets
             cp(file, joinpath(docs_dir, "src", "assets", basename(file)))
@@ -52,8 +54,6 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         s *= "$tab]"
 
         s
-    else
-        "[]"
     end
 
     kwargs_string = if :additional_kwargs in fieldnames(typeof(p)) &&

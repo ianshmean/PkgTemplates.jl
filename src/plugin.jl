@@ -73,7 +73,7 @@ macro plugin(T, src_dest, exs...)
             view::Dict{String, Any}
             $(attrs...)
 
-            function $(esc(T))(; file::Union{AbstractString, Nothing}=$src, $(map(esc, kws)...))
+            function $(esc(T))(file::Union{AbstractString, Nothing}=$src; $(map(esc, kws)...))
                 if file !== nothing && !isfile(file)
                     throw(ArgumentError("File $(abspath(file)) does not exist"))
                 end
@@ -82,81 +82,12 @@ macro plugin(T, src_dest, exs...)
         end
 
         function PkgTemplates.interactive(::Type{$(esc(T))})
-            return PkgTemplates.interactive($(esc(T)); file=$src)
+            return PkgTemplates.interactive($(esc(T)), $src)
         end
     end
 end
 
-"""
-Generic plugins are plugins that add any number of patterns to the generated package's
-`.gitignore`, and have at most one associated file to generate.
-
-# Attributes
-* `gitignore::Vector{AbstractString}`: Array of patterns to be added to the `.gitignore` of
-  generated packages that use this plugin.
-* `src::Union{AbstractString, Nothing}`: Path to the file that will be copied into the generated
-  package repository. If set to `nothing`, no file will be generated. When this defaults
-  to an empty string, there should be a default file in `defaults` that will be copied.
-  That file's name is usually the same as the plugin's name, except in all lowercase and
-  with the `.yml` extension. If this is not the case, an `interactive` method needs to be
-  implemented to call `interactive(; file="file.ext")`.
-* `dest::AbstractString`: Path to the generated file, relative to the root of the generated
-  package repository.
-* `badges::Vector{Badge}`: Array of [`Badge`](@ref)s containing information used to
-  create Markdown-formatted badges from the plugin. Entries will be run through
-  [`substitute`](@ref), so they may contain placeholder values.
-* `view::Dict{String, Any}`: Additional substitutions to make in both the plugin's badges
-  and its associated file. See [`substitute`](@ref) for details.
-
-# Example
-```julia
-struct MyPlugin <: GenericPlugin
-    gitignore::Vector{AbstractString}
-    src::Union{AbstractString, Nothing}
-    dest::AbstractString
-    badges::Vector{Badge}
-    view::Dict{String, Any}
-
-    function MyPlugin(; config_file::Union{AbstractString, Nothing}="")
-        if config_file != nothing
-            config_file = if isempty(config_file)
-                joinpath(DEFAULTS_DIR, "my-plugin.toml")
-            elseif isfile(config_file)
-                abspath(config_file)
-            else
-                throw(ArgumentError(
-                    "File \$(abspath(config_file)) does not exist"
-                ))
-            end
-        end
-        new(
-            ["*.mgp"],
-            config_file,
-            ".my-plugin.toml",
-            [
-                Badge(
-                    "My Plugin",
-                    "https://myplugin.com/badge-{{YEAR}}.png",
-                    "https://myplugin.com/{{USER}}/{{PKGNAME}}.jl",
-                ),
-            ],
-            Dict{String, Any}("YEAR" => year(today())),
-        )
-    end
-end
-
-interactive(::Type{MyPlugin}) = interactive(MyPlugin; file="my-plugin.toml")
-```
-
-The above plugin ignores files ending with `.mgp`, copies `defaults/my-plugin.toml` by
-default, and creates a badge that links to the project on its own site, using the default
-substitutions with one addition: `{{YEAR}} => year(today())`. Since the default config
-template file doesn't follow the generic naming convention, we added another `interactive`
-method to correct the assumed filename.
-"""
-abstract type GenericPlugin <: Plugin end
-
-function Base.show(io::IO, p::GenericPlugin)
+function Base.show(io::IO, p::GeneratedPlugin)
     spc = "  "
     println(io, nameof(typeof(p)), ":")
 
@@ -247,12 +178,7 @@ struct Badge
     link::String
 end
 
-"""
-    format(b::Badge) -> String
-
-Return `badge`'s data formatted as a Markdown string.
-"""
-format(b::Badge) = "[![$(b.hover)]($(b.image))]($(b.link))"
+Base.show(io::IO, b::Badge) = print(io, "[![$(b.hover)]($(b.image))]($(b.link))")
 
 """
     gen_plugin(p::Plugin, t::Template, pkg_name::AbstractString) -> Vector{String}
@@ -268,17 +194,15 @@ Returns an array of generated file/directory names.
 """
 gen_plugin(::Plugin, ::Template, ::AbstractString) = String[]
 
-function gen_plugin(p::GenericPlugin, t::Template, pkg_name::AbstractString)
-    if p.src === nothing
-        return String[]
-    end
+function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
+    source(p) === nothing && return String[]
     text = substitute(
-        read(p.src, String),
+        read(source(p), String),
         t;
         view=merge(Dict("PKGNAME" => pkg_name), p.view),
     )
-    gen_file(joinpath(t.dir, pkg_name, p.dest), text)
-    return [p.dest]
+    gen_file(joinpath(t.dir, pkg_name, destination(p)), text)
+    return [destination(p)]
 end
 
 """
@@ -295,10 +219,10 @@ Returns an array of Markdown badges.
 """
 badges(::Plugin, ::AbstractString, ::AbstractString) = String[]
 
-function badges(p::GenericPlugin, user::AbstractString, pkg_name::AbstractString)
+function badges(p::GeneratedPlugin, user::AbstractString, pkg_name::AbstractString)
     # Give higher priority to replacements defined in the plugin's view.
     view = merge(Dict("USER" => user, "PKGNAME" => pkg_name), p.view)
-    return map(b -> substitute(format(b), view), p.badges)
+    return map(b -> substitute(string(b), view), badges(p))
 end
 
 """
@@ -308,30 +232,26 @@ Interactively create a plugin of type `T`, where `file` is the plugin type's def
 config template with a non-standard name (for `MyPlugin`, this is anything but
 "myplugin.yml").
 """
-function interactive(T::Type{<:GenericPlugin}; file::Union{AbstractString, Nothing}="")
+function interactive(T::Type{<:GeneratedPlugin}, default::Union{AbstractString, Nothing})
     name = string(nameof(T))
-    # By default, we expect the default plugin file template for a plugin called
-    # "MyPlugin" to be called "myplugin.yml".
-    fn = file != nothing && isempty(file) ? "$(lowercase(name)).yml" : file
-    default_config_file = fn == nothing ? fn : joinpath(DEFAULTS_DIR, fn)
 
     print("$name: Enter the config template filename (\"None\" for no file) ")
-    if default_config_file == nothing
+    if default === nothing
         print("[None]: ")
     else
-        print("[", replace(default_config_file, homedir() => "~"), "]: ")
+        print("[", replace(default, homedir() => "~"), "]: ")
     end
 
-    config_file = readline()
-    config_file = if uppercase(config_file) == "NONE"
+    file = readline()
+    file = if uppercase(file) == "NONE"
         nothing
-    elseif isempty(config_file)
-        default_config_file
+    elseif isempty(file)
+        default
     else
-        config_file
+        file
     end
 
-    return T(; config_file=config_file)
+    return T(file)
 end
 
 @plugin AppVeyor default_file("appveyor.yml") => ".appveyor.yml" badges=[Badge(

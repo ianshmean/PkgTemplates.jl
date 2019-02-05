@@ -260,9 +260,7 @@ Create a license in `pkg_dir`.
 Returns an array of generated file/directory names.
 """
 function gen_license(pkg_dir::AbstractString, t::Template)
-    if isempty(t.license)
-        return String[]
-    end
+    isempty(t.license) && return String[]
 
     text = "Copyright (c) $(year(today())) $(t.authors)\n"
     text *= read_license(t.license)
