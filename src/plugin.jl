@@ -1,4 +1,53 @@
 """
+A [`Plugin`](@ref) which has been generated with [`@plugin`](@ref).
+You should not manually create subtypes!
+"""
+abstract type GeneratedPlugin <: Plugin end
+
+source(p::GeneratedPlugin) = p.src
+destination(p::GeneratedPlugin) = p.dest
+gitignore(p::GeneratedPlugin) = p.gitignore
+badges(p::GeneratedPlugin) = p.badges
+view(p::GeneratedPlugin) = p.view
+
+"""
+    @plugin T src => dest opts...
+
+Generate a basic plugin which manages a single config file.
+"""
+macro plugin(T, src_dest, kws...)
+    src, dest = eval.(src_dest.args[2:3])
+    opts = merge(
+        Dict(:gitignore => String[], :badges => Badge[], :view => Dict()),
+        Dict(k => eval(v) for (k, v) in getfield.(kws, :args)),
+    )
+
+    gitignore = opts[:gitignore]
+    badges = opts[:badges]
+    view = opts[:view]
+
+    quote
+        Base.@__doc__ struct $T <: GeneratedPlugin
+            src::Union{String, Nothing}
+            dest::String
+            gitignore::Vector{String}
+            badges::Vector{Badge}
+            view::Dict{String, Any}
+
+            function $(esc(T))(; file::Union{AbstractString, Nothing}=$src)
+                if file !== nothing && !isfile(file)
+                    throw(ArgumentError("File $(abspath(file)) does not exist"))
+                end
+                return new(file, $dest, $gitignore, $badges, $view)
+            end
+        end
+
+        PkgTemplates.interactive(::Type{$(esc(T))}) = interactive($(esc(T)); file=$src)
+    end
+
+end
+
+"""
 Generic plugins are plugins that add any number of patterns to the generated package's
 `.gitignore`, and have at most one associated file to generate.
 
