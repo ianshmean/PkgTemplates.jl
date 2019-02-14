@@ -81,9 +81,7 @@ macro plugin(T, src_dest, exs...)
             end
         end
 
-        function PkgTemplates.interactive(::Type{$(esc(T))})
-            return PkgTemplates.interactive($(esc(T)), $src)
-        end
+        PkgTemplates.default_source(::Type{$(esc(T))}) = $src
     end
 end
 
@@ -226,32 +224,29 @@ function badges(p::GeneratedPlugin, user::AbstractString, pkg_name::AbstractStri
 end
 
 """
-    interactive(T::Type{<:Plugin}; file::Union{AbstractString, Nothing}="") -> T
+    interactive(T::Type{<:Plugin}) -> T
 
-Interactively create a plugin of type `T`, where `file` is the plugin type's default
-config template with a non-standard name (for `MyPlugin`, this is anything but
-"myplugin.yml").
+Interactively create a plugin of type `T`.
 """
-function interactive(T::Type{<:GeneratedPlugin}, default::Union{AbstractString, Nothing})
-    name = string(nameof(T))
+interactive(T::Type{<:GeneratedPlugin}) = T(promptconfig(T))
 
-    print("$name: Enter the config template filename (\"None\" for no file) ")
+function promptconfig(T::Type{<:GeneratedPlugin})
+    print(nameof(T), ": Enter the config template filename ")
+    default = default_source(T)
     if default === nothing
         print("[None]: ")
     else
-        print("[", replace(default, homedir() => "~"), "]: ")
+        print("(\"None\" for no file) [", replace(default, homedir() => "~"), "]: ")
     end
 
     file = readline()
-    file = if uppercase(file) == "NONE"
+    return if uppercase(file) == "NONE"
         nothing
     elseif isempty(file)
         default
     else
         file
     end
-
-    return T(file)
 end
 
 @plugin AppVeyor default_file("appveyor.yml") => ".appveyor.yml" badges=[Badge(

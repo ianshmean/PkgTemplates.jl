@@ -34,6 +34,7 @@ A plugin to be added to a [`Template`](@ref), which adds some functionality or i
 New plugins should almost always extend [`GenericPlugin`](@ref) or [`CustomPlugin`](@ref).
 """
 abstract type Plugin end
+default_source(::Plugin) = nothing
 
 include("licenses.jl")
 include("template.jl")
