@@ -28,7 +28,7 @@ function badges(::GitLabPages, user::AbstractString, pkg_name::AbstractString)
     # is not supported in GitLab pages yet.  See:
     # https://github.com/invenia/PkgTemplates.jl/pull/54
     return [
-        format(Badge(
+        string(Badge(
             "Dev",
             "https://img.shields.io/badge/docs-dev-blue.svg",
             "https://$user.gitlab.io/$pkg_name.jl/dev"

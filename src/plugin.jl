@@ -100,64 +100,6 @@ function Base.repr(p::GeneratedPlugin)
 end
 
 """
-Custom plugins are plugins whose behaviour does not follow the [`GenericPlugin`](@ref)
-pattern. They can implement [`gen_plugin`](@ref), [`badges`](@ref), and
-[`interactive`](@ref) in any way they choose, as long as they conform to the usual type
-signature.
-
-# Attributes
-* `gitignore::Vector{AbstractString}`: Array of patterns to be added to the `.gitignore` of
-  generated packages that use this plugin.
-
-# Example
-```julia
-struct MyPlugin <: CustomPlugin
-    gitignore::Vector{AbstractString}
-    lucky::Bool
-
-    MyPlugin() = new([], rand() > 0.8)
-
-    function gen_plugin(p::MyPlugin, t::Template, pkg_name::AbstractString)
-        return if p.lucky
-            text = substitute("You got lucky with {{PKGNAME}}, {{USER}}!", t)
-            gen_file(joinpath(t.dir, pkg_name, ".myplugin.yml"), text)
-            [".myplugin.yml"]
-        else
-            println("Maybe next time.")
-            String[]
-        end
-    end
-
-    function badges(p::MyPlugin, user::AbstractString, pkg_name::AbstractString)
-        return if p.lucky
-            [
-                format(Badge(
-                    "You got lucky!",
-                    "https://myplugin.com/badge.png",
-                    "https://myplugin.com/\$user/\$pkg_name.jl",
-                )),
-            ]
-        else
-            String[]
-        end
-    end
-end
-
-interactive(:Type{MyPlugin}) = MyPlugin()
-```
-
-This plugin doesn't do much, but it demonstrates how [`gen_plugin`](@ref), [`badges`](@ref)
-and [`interactive`](@ref) can be implemented using [`substitute`](@ref),
-[`gen_file`](@ref), [`Badge`](@ref), and [`format`](@ref).
-
-# Defining Template Files
-Often, the contents of the config file that your plugin generates depends on variables like
-the package name, the user's username, etc. Template files (which are stored in `defaults`)
-can use [here](https://github.com/jverzani/Mustache.jl)'s syntax to define replacements.
-"""
-abstract type CustomPlugin <: Plugin end
-
-"""
     Badge(hover::AbstractString, image::AbstractString, link::AbstractString) -> Badge
 
 Container for Markdown badge data.
@@ -267,11 +209,13 @@ end
 @plugin GitLabCI default_file("gitlab-ci.yml") => ".gitlab-ci.yml" coverage::Bool=true
 gitignore(p::GitLabCI) = p.coverage ? ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] : String[]
 function badges(p::GitLabCI)
-    bs = [Badge(
-        "Build Status",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
-    )]
+    bs = [
+        Badge(
+            "Build Status",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
+        ),
+    ]
     p.coverage && push!(bs, Badge(
         "Coverage",
         "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
@@ -281,7 +225,7 @@ function badges(p::GitLabCI)
 end
 function interactive(::Type{GitLabCI})
     cfg = promptconfig(GitLabCI)
-    print("GitLabCI: enable test coverage analysis [Yes]: ")
+    print("GitLabCI: Enable test coverage analysis [Yes]: ")
     coverage = !in(uppercase(readline()), ["N", "NO", "FALSE", "NONE"])
     return GitLabCI(cfg; coverage=coverage)
 end

@@ -29,18 +29,18 @@ struct GitHubPages <: Documenter
 end
 
 function badges(::GitHubPages, user::AbstractString, pkg_name::AbstractString)
-    return [
-        format(Badge(
+    return map(string, [
+        Badge(
             "Stable",
             "https://img.shields.io/badge/docs-stable-blue.svg",
             "https://$user.github.io/$pkg_name.jl/stable"
-        )),
-        format(Badge(
+        ),
+        Badge(
             "Dev",
             "https://img.shields.io/badge/docs-dev-blue.svg",
             "https://$user.github.io/$pkg_name.jl/dev"
-        )),
-    ]
+        ),
+    ])
 end
 
 function gen_plugin(p::GitHubPages, t::Template, pkg_name::AbstractString)

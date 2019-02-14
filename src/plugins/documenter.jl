@@ -17,7 +17,9 @@ kwarg to `makedocs`
 It may optionally include the field `additional_kwargs::Union{AbstractDict, NamedTuple}`
 to allow additional kwargs to be added to `makedocs`.
 """
-abstract type Documenter <: CustomPlugin end
+abstract type Documenter <: Plugin end
+
+assets(p::Documenter) = p.assets
 
 function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     path = joinpath(t.dir, pkg_name)
@@ -108,20 +110,7 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
 end
 
 function Base.show(io::IO, p::Documenter)
-    spc = "  "
-    println(io, nameof(typeof(p)), ":")
-
-    n = length(p.assets)
-    s = n == 1 ? "" : "s"
-    print(io, spc, "→ $n asset file$s")
-    if n == 0
-        println(io)
-    else
-        println(io, ": ", join(map(a -> replace(a, homedir() => "~"), p.assets), ", "))
-    end
-
-    n = length(p.gitignore)
-    s = n == 1 ? "" : "s"
-    print(io, "$spc→ $n gitignore entrie$s")
-    n > 0 && print(io, ": ", join(map(repr, p.gitignore), ", "))
+    T = typeof(p)
+    n = length(assets(p))
+    print(io, "$T: $n extra asset(s)")
 end
