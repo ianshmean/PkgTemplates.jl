@@ -81,25 +81,22 @@ macro plugin(T, src_dest, exs...)
             end
         end
 
-        PkgTemplates.default_source(::Type{$(esc(T))}) = $src
+        PkgTemplates.source(::Type{$(esc(T))}) = $src
     end
 end
 
 function Base.show(io::IO, p::GeneratedPlugin)
-    spc = "  "
-    println(io, nameof(typeof(p)), ":")
+    T = nameof(typeof(p))
+    src = source(p)
+    cfg = src === nothing ? "no file" : replace(src, homedir() => "~")
+    print(io, "$T: Configured with $cfg")
+end
 
-    cfg = if p.src === nothing
-        "None"
-    else
-        dirname(p.src) == DEFAULTS_DIR ? "Default" : p.src
-    end
-    println(io, spc, "→ Config file: ", cfg)
-
-    n = length(p.gitignore)
-    s = n == 1 ? "" : "s"
-    print(io, spc, "→ $n gitignore entrie$s")
-    n > 0 && print(io, ": ", join(map(repr, p.gitignore), ", "))
+function Base.repr(p::GeneratedPlugin)
+    T = nameof(typeof(p))
+    src = source(p)
+    cfg = src === nothing ? "nothing" : repr(replace(src, homedir() => "~"))
+    return "$T($cfg)"
 end
 
 """
@@ -232,7 +229,7 @@ interactive(T::Type{<:GeneratedPlugin}) = T(promptconfig(T))
 
 function promptconfig(T::Type{<:GeneratedPlugin})
     print(nameof(T), ": Enter the config template filename ")
-    default = default_source(T)
+    default = source(T)
     if default === nothing
         print("[None]: ")
     else
@@ -281,6 +278,20 @@ function badges(p::GitLabCI)
         "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
     ))
     return bs
+end
+function interactive(::Type{GitLabCI})
+    cfg = promptconfig(GitLabCI)
+    print("GitLabCI: enable test coverage analysis [Yes]: ")
+    coverage = !in(uppercase(readline()), ["N", "NO", "FALSE", "NONE"])
+    return GitLabCI(cfg; coverage=coverage)
+end
+function Base.show(io::IO, p::GitLabCI)
+    invoke(show, Tuple{IO, GeneratedPlugin}, io, p)
+    print(io, ", coverage ", p.coverage ? "enabled" : "disabled")
+end
+function Base.repr(p::GitLabCI)
+    s = invoke(repr, Tuple{GeneratedPlugin}, p)[1:end-1]  # Remove trailing ')'.
+    return "$s; coverage=$(p.coverage))"
 end
 
 @plugin TravisCI default_file("travis.yml") => ".travis.yml" badges=[Badge(
