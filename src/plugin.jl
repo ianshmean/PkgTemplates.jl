@@ -24,12 +24,12 @@ Generate a basic plugin which manages a single configuration file.
   via keyword arguments (optional if a default is provided, otherwise not).
 
 # Keyword Arguments
-* `gitignore::Vector{<:AbstractString}=[]`: List of patterns to be added to the
-  `.gitignore` of generated packages.
-* `badges::Vector{Badge}=[]`: List of [`Badge`](@ref)s to be added to the `README.md` of
-  generated packages.
-* `view::Dict{String. Any}=Dict()`: Additional substitutions to be made in both the
-  plugin's badges and its configuration file. See [`substitute`](@ref) for details.
+* `gitignore=String[]`: List of patterns to be added to the `.gitignore` of generated
+  packages. Can also be a single string.
+* `badges=Badge[]`: List of [`Badge`](@ref)s to be added to the `README.md` of generated
+  packages. Can also be a single badge.
+* `view=Dict()`: Key-value pairs representing additional substitutions to be made in both
+  the plugin's badges and its configuration file. See [`substitute`](@ref) for details.
 """
 macro plugin(T, src_dest, exs...)
     src, dest = eval.(src_dest.args[2:3])
@@ -37,7 +37,7 @@ macro plugin(T, src_dest, exs...)
     attrs = Expr[]  # Attribute expressions, e.g. x::Bool.
     kws = Expr[]  # Keyword expressions, e.g. x::Bool or x::Bool=true.
     names = Symbol[]  # Attribute names, e.g. x.
-    opts = Dict(:gitignore => [], :badges => [], :view => Dict())
+    opts = Dict(:gitignore => [], :badges => [], :view => ())
 
     for ex in exs
         if ex.head === :(::)
@@ -60,9 +60,11 @@ macro plugin(T, src_dest, exs...)
         end
     end
 
-    gitignore = opts[:gitignore]
-    badges = opts[:badges]
-    view = opts[:view]
+    gitignore = opts[:gitignore] isa Vector ? opts[:gitignore] : [opts[:gitignore]]
+    gitignore = convert(Vector{String}, gitignore)
+    badges = opts[:badges] isa Vector ? opts[:badges] : [opts[:badges]]
+    badges = convert(Vector{Badge}, badges)
+    view = Dict(opts[:view])
 
     quote
         Base.@__doc__ struct $T <: GeneratedPlugin
@@ -192,34 +194,32 @@ function promptconfig(T::Type{<:GeneratedPlugin})
     end
 end
 
-@plugin AppVeyor default_file("appveyor.yml") => ".appveyor.yml" badges=[Badge(
+@plugin AppVeyor default_file("appveyor.yml") => ".appveyor.yml" badges=Badge(
     "Build Status",
     "https://ci.appveyor.com/api/projects/status/github/{{USER}}/{{PKGNAME}}.jl?svg=true",
     "https://ci.appveyor.com/project/{{USER}}/{{PKGNAME}}-jl",
-)]
+)
 
-@plugin Codecov nothing => ".codecov.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=[Badge(
+@plugin Codecov nothing => ".codecov.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=Badge(
     "Coverage",
     "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl/branch/master/graph/badge.svg",
     "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl",
-)]
+)
 
-@plugin Coveralls nothing => ".coveralls.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=[Badge(
+@plugin Coveralls nothing => ".coveralls.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=Badge(
     "Coverage",
     "https://coveralls.io/repos/github/{{USER}}/{{PKGNAME}}.jl/badge.svg?branch=master",
     "https://coveralls.io/github/{{USER}}/{{PKGNAME}}.jl?branch=master",
-)]
+)
 
 @plugin GitLabCI default_file("gitlab-ci.yml") => ".gitlab-ci.yml" coverage::Bool=true
 gitignore(p::GitLabCI) = p.coverage ? ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] : String[]
 function badges(p::GitLabCI)
-    bs = [
-        Badge(
-            "Build Status",
-            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
-            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
-        ),
-    ]
+    bs = [Badge(
+        "Build Status",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
+        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
+    )]
     p.coverage && push!(bs, Badge(
         "Coverage",
         "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
@@ -242,8 +242,8 @@ function Base.repr(p::GitLabCI)
     return "$s; coverage=$(p.coverage))"
 end
 
-@plugin TravisCI default_file("travis.yml") => ".travis.yml" badges=[Badge(
+@plugin TravisCI default_file("travis.yml") => ".travis.yml" badges=Badge(
     "Build Status",
     "https://travis-ci.com/{{USER}}/{{PKGNAME}}.jl.svg?branch=master",
     "https://travis-ci.com/{{USER}}/{{PKGNAME}}.jl",
-)]
+)
