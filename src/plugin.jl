@@ -1,8 +1,8 @@
 """
-A [`Plugin`](@ref) which has been generated with [`@plugin`](@ref).
+A plugin which has been generated with [`@plugin`](@ref).
 You should not manually create subtypes!
 """
-abstract type GeneratedPlugin <: Plugin end
+abstract type GeneratedPlugin <:AbstractPlugin end
 
 source(p::GeneratedPlugin) = p.src
 destination(p::GeneratedPlugin) = p.dest
@@ -118,7 +118,7 @@ end
 Base.show(io::IO, b::Badge) = print(io, "[![$(b.hover)]($(b.image))]($(b.link))")
 
 """
-    gen_plugin(p::Plugin, t::Template, pkg_name::AbstractString) -> Vector{String}
+    gen_plugin(p::AbstractPlugin, t::Template, pkg_name::AbstractString) -> Vector{String}
 
 Generate any files associated with a plugin.
 
@@ -129,7 +129,7 @@ Generate any files associated with a plugin.
 
 Returns an array of generated file/directory names.
 """
-gen_plugin(::Plugin, ::Template, ::AbstractString) = String[]
+gen_plugin(::AbstractPlugin, ::Template, ::AbstractString) = String[]
 
 function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
     source(p) === nothing && return String[]
@@ -143,7 +143,11 @@ function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
 end
 
 """
-    badges(p::Plugin, user::AbstractString, pkg_name::AbstractString) -> Vector{String}
+    badges(
+        p::AbstractPlugin,
+        user::AbstractString,
+        pkg_name::AbstractString,
+    ) -> Vector{String}
 
 Generate Markdown badges for the plugin.
 
@@ -154,7 +158,7 @@ Generate Markdown badges for the plugin.
 
 Returns an array of Markdown badges.
 """
-badges(::Plugin, ::AbstractString, ::AbstractString) = String[]
+badges(::AbstractPlugin, ::AbstractString, ::AbstractString) = String[]
 
 function badges(p::GeneratedPlugin, user::AbstractString, pkg_name::AbstractString)
     # Give higher priority to replacements defined in the plugin's view.
@@ -163,7 +167,7 @@ function badges(p::GeneratedPlugin, user::AbstractString, pkg_name::AbstractStri
 end
 
 """
-    interactive(T::Type{<:Plugin}) -> T
+    interactive(T::Type{<:AbstractPlugin}) -> T
 
 Interactively create a plugin of type `T`.
 """

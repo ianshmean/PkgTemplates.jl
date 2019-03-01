@@ -24,7 +24,8 @@ create a template, you can use [`interactive_template`](@ref) instead.
 * `julia_version::VersionNumber=$VERSION`: Minimum allowed Julia version.
 * `ssh::Bool=false`: Whether or not to use SSH for the remote.
 * `manifest::Bool=false`: Whether or not to commit the `Manifest.toml`.
-* `plugins::Vector{<:Plugin}=Plugin[]`: A list of `Plugin`s that the package will include.
+* `plugins::Vector{<:AbstractPlugin}=AbstractPlugin[]`: A list of plugins that the
+  package will include.
 """
 struct Template
     user::String
@@ -35,7 +36,7 @@ struct Template
     julia_version::VersionNumber
     ssh::Bool
     manifest::Bool
-    plugins::Dict{DataType, <:Plugin}
+    plugins::Dict{DataType, <:AbstractPlugin}
 
     function Template(;
         user::AbstractString="",
@@ -46,7 +47,7 @@ struct Template
         julia_version::VersionNumber=VERSION,
         ssh::Bool=false,
         manifest::Bool=false,
-        plugins::Vector{<:Plugin}=Plugin[],
+        plugins::Vector{<:AbstractPlugin}=AbstractPlugin[],
         git::Bool=true,
     )
         # Check for required Git options for package generation
@@ -78,7 +79,7 @@ struct Template
 
         dir = abspath(expanduser(dir))
 
-        plugin_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
+        plugin_dict = Dict{DataType, AbstractPlugin}(typeof(p) => p for p in plugins)
         if (length(plugins) != length(plugin_dict))
             @warn "Plugin list contained duplicates, only the last of each type was kept"
         end
@@ -131,7 +132,7 @@ function interactive_template(; git::Bool=true, fast::Bool=false)
     @info "Default values are shown in [brackets]"
     # Getting the leaf types in a separate thread eliminates an awkward wait after
     # "Select plugins" is printed.
-    plugin_types = @async leaves(Plugin)
+    plugin_types = @async leaves(AbstractPlugin)
     kwargs = Dict{Symbol, Any}()
 
     default_user = LibGit2.getconfig("github.user", "")
@@ -217,7 +218,10 @@ function interactive_template(; git::Bool=true, fast::Bool=false)
     type_names = map(t -> split(string(t), ".")[end], plugin_types)
     menu = MultiSelectMenu(String.(type_names); pagesize=length(type_names))
     selected = collect(request(menu))
-    kwargs[:plugins] = Vector{Plugin}(map(interactive, getindex(plugin_types, selected)))
+    kwargs[:plugins] = convert(
+        Vector{AbstractPlugin},
+        map(interactive, getindex(plugin_types, selected)),
+    )
 
     return Template(; git=git, kwargs...)
 end

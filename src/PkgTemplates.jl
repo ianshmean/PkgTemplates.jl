@@ -31,9 +31,8 @@ default_file(file::AbstractString) = joinpath(DEFAULTS_DIR, file)
 
 """
 A plugin to be added to a [`Template`](@ref), which adds some functionality or integration.
-New plugins should almost always extend [`GenericPlugin`](@ref) or [`CustomPlugin`](@ref).
 """
-abstract type Plugin end
+abstract type AbstractPlugin end
 
 include("licenses.jl")
 include("template.jl")

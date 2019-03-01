@@ -17,7 +17,7 @@ kwarg to `makedocs`
 It may optionally include the field `additional_kwargs::Union{AbstractDict, NamedTuple}`
 to allow additional kwargs to be added to `makedocs`.
 """
-abstract type Documenter <: Plugin end
+abstract type Documenter <: AbstractPlugin end
 
 assets(p::Documenter) = p.assets
 
