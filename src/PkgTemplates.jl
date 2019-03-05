@@ -37,6 +37,7 @@ include("licenses.jl")
 include("template.jl")
 include("generate.jl")
 include("plugin.jl")
+include(joinpath("plugins", "generated.jl"))
 include(joinpath("plugins", "documenter.jl"))
 
 const BADGE_ORDER = [
