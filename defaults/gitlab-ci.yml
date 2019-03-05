@@ -6,7 +6,7 @@ Julia {{VERSION}}:
   after_script:
     - julia -e 'using Printf; using Pkg; Pkg.add("Coverage"); using Coverage; c, t = get_summary(process_folder()); @printf "Test Coverage %.2f%%\n" 100c/t'
 {{/COVERAGE}}
-{{#DOCUMENTER}}
+{{#GL_PAGES}}
 pages:
   image: julia:{{VERSION}}
   stage: deploy
@@ -23,4 +23,4 @@ pages:
       - public
   only:
     - master
-{{/DOCUMENTER}}
+{{/GL_PAGES}}

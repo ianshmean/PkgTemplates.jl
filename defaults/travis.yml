@@ -21,7 +21,7 @@ after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
 {{/COVERALLS}}
 {{/COVERAGE}}
-{{#DOCUMENTER}}
+{{#GH_PAGES}}
 jobs:
   include:
     - stage: Documentation
@@ -32,4 +32,4 @@ jobs:
           Pkg.instantiate();
           include("docs/make.jl");'
       after_success: skip
-{{/DOCUMENTER}}
+{{/GH_PAGES}}

@@ -1,25 +1,84 @@
 const DOCUMENTER_UUID = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-const STANDARD_KWS = [:modules, :format, :pages, :repo, :sitename, :authors, :assets]
+const RESERVED_KWS = [:modules, :format, :pages, :repo, :sitename, :authors, :assets]
 
 """
-Add a `Documenter` subtype to a template's plugins to add support for documentation
-generation via [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).
+    Documenter{T<:Union{GitLabCI, TravisCI}}(;
+        assets::Vector{<:AbstractString}=String[],
+        kwargs::Union{Dict, NamedTuple}=Dict(),
+    ) -> Documenter{T}
 
-By default, the plugin generates a minimal index.md and a make.jl file. The make.jl
-file contains the Documenter.makedocs command with predefined values for `modules`,
-`format`, `pages`, `repo`, `sitename`, and `authors`.
+Add `Documenter{T}` to a template's plugins to add support for documentation
+generation via [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl), and deployment
+via `T`, where `T` is some supported CI plugin.
 
-The subtype is expected to include the following fields:
-* `assets::Vector{AbstractString}`, a list of filenames to be included as the `assets`
-kwarg to `makedocs`
-* `gitignore::Vector{AbstractString}`, a list of files to be added to the `.gitignore`
+!!! note
+    If deploying documentation with Travis CI, don't forget to complete the required
+    configuration (see
+    [here](https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#SSH-Deploy-Keys-1)).
 
-It may optionally include the field `additional_kwargs::Union{AbstractDict, NamedTuple}`
-to allow additional kwargs to be added to `makedocs`.
 """
-abstract type Documenter <: AbstractPlugin end
+struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: AbstractPlugin
+    assets::Vector{String}
+    kwargs::Dict{Symbol, Any}
 
-assets(p::Documenter) = p.assets
+    function Documenter{T}(;
+        assets::Vector{<:AbstractString}=String[],
+        kwargs=Dict(),
+    ) where T <: Union{GitLabCI, TravisCI, Nothing}
+        map!(abspath, assets, assets)
+        foreach(assets) do file
+            isfile(file) || throw(ArgumentError("Asset file $file not exist"))
+        end
+
+        kwargs = Dict{Symbol, Any}(pairs(kwargs))
+        foreach(kwargs) do (k, v)
+            k in RESERVED_KWS && throw(ArgumentError("makedocs keyword $k is reserved"))
+        end
+
+        return new(assets, kwargs)
+    end
+end
+
+# Windows Git also recognizes these paths.
+gitignore(::Documenter) = ["/docs/build", "/docs/site"]
+
+badges(p::Documenter) = badges(typeof(p))
+badges(::Type{Documenter{Nothing}}) = Badge[]
+
+function badges(::Type{<:Documenter})
+    return [
+        Badge(
+            "Stable",
+            "https://img.shields.io/badge/docs-stable-blue.svg",
+            "https://{{USER}}.github.io/{{PKGNAME}}.jl/stable",
+        ),
+        Badge(
+            "Dev",
+            "https://img.shields.io/badge/docs-dev-blue.svg",
+            "https://{{USER}}.github.io/{{PKGNAME}}.jl/dev",
+        ),
+    ]
+end
+
+function badges(::Type{Documenter{GitLabCI}})
+    return [Badge(
+        "Dev",
+        "https://img.shields.io/badge/docs-dev-blue.svg",
+        "https://{{USER}}.gitlab.io/{{PKGNAME}}.jl/dev"
+    )]
+end
+
+maybe_deploydocs(::Documenter, ::Template, ::AbstractString) = nothing
+function maybe_deploydocs(::Documenter{TravisCI}, t::Template, pkg_name::AbstractString)
+    make = joinpath(t.dir, pkg_name, "docs", "make.jl")
+    s = """
+
+        deploydocs(;
+            repo="$(t.host)/$(t.user)/$pkg_name.jl",
+        )
+        """
+    open(io -> print(io, s), make, "a")
+end
 
 function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     path = joinpath(t.dir, pkg_name)
@@ -39,44 +98,31 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     assets_string = if isempty(p.assets)
         "[]"
     else
-        mkpath(joinpath(docs_dir, "src", "assets"))
-        for file in p.assets
-            cp(file, joinpath(docs_dir, "src", "assets", basename(file)))
-        end
-
+        # Copy the files and create the list.
         # We want something that looks like the following:
         # [
         #         assets/file1,
         #         assets/file2,
         #     ]
+
+        mkpath(joinpath(docs_dir, "src", "assets"))
         s = "[\n"
-        for asset in p.assets
+        foreach(p.assets) do asset
+            cp(asset, joinpath(docs_dir, "src", "assets", basename(asset)))
             s *= """$(tab^2)"assets/$(basename(asset))",\n"""
         end
-        s *= "$tab]"
 
-        s
+        s * tab * "]"
     end
 
-    kwargs_string = if :additional_kwargs in fieldnames(typeof(p)) &&
-        fieldtype(typeof(p), :additional_kwargs) <: Union{AbstractDict, NamedTuple}
+    kwargs_string = if isempty(p.kwargs)
+        ""
+    else
         # We want something that looks like the following:
         #     key1="val1",
         #     key2="val2",
         #
-        kws = [keys(p.additional_kwargs)...]
-        valid_keys = filter(k -> !in(Symbol(k), STANDARD_KWS), kws)
-        if length(p.additional_kwargs) > length(valid_keys)
-            invalid_keys = filter(k -> Symbol(k) in STANDARD_KWS, kws)
-            @warn string(
-                "Ignoring predefined Documenter kwargs ",
-                join(map(repr, invalid_keys), ", "),
-                " from additional kwargs"
-            )
-        end
-        join(map(k -> string(tab, k, "=", repr(p.additional_kwargs[k]), ",\n"), valid_keys))
-    else
-        ""
+        join(string(tab, k, "=", repr(v) for (k, v) in p.kwargs), ",\n")
     end
 
     make = """
@@ -95,22 +141,40 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         $kwargs_string)
         """
     docs = """
-    # $pkg_name.jl
+        # $pkg_name.jl
 
-    ```@index
-    ```
+        ```@index
+        ```
 
-    ```@autodocs
-    Modules = [$pkg_name]
-    ```
-    """
+        ```@autodocs
+        Modules = [$pkg_name]
+        ```
+        """
 
     gen_file(joinpath(docs_dir, "make.jl"), make)
+    maybe_deploydocs(p, t, pkg_name)
     gen_file(joinpath(docs_dir, "src", "index.md"), docs)
+
+    return ["docs/"]
+end
+
+function interactive(T::Type{<:Documenter})
+    print("$T: Enter any Documenter asset files (separated by spaces) [none]: ")
+    assets = split(readline())
+
+    println("$T: Enter any extra makedocs key-value pairs (joined by '=') [none]")
+    kwargs = Dict{Symbol, Any}()
+    line = map(split(readline())) do kv
+        k, v = split(kv, "="; limit=2)
+        kwargs[Symbol(k)] = eval(Meta.parse(v))
+    end
+
+    return T(; assets=assets, kwargs=kwargs)
 end
 
 function Base.show(io::IO, p::Documenter)
     T = typeof(p)
-    n = length(assets(p))
-    print(io, "$T: $n extra asset(s)")
+    as = length(p.assets)
+    ks = length(p.kwargs)
+    print(io, "$T: $as extra asset(s), $ks extra keyword(s)")
 end

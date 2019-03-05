@@ -18,8 +18,7 @@ export
     show_license,
     available_licenses,
     # Plugins.
-    GitHubPages,
-    GitLabPages,
+    Documenter,
     AppVeyor,
     TravisCI,
     GitLabCI,
@@ -39,9 +38,15 @@ include("template.jl")
 include("generate.jl")
 include("plugin.jl")
 include(joinpath("plugins", "documenter.jl"))
-include(joinpath("plugins", "githubpages.jl"))
-include(joinpath("plugins", "gitlabpages.jl"))
 
-const BADGE_ORDER = [GitHubPages, GitLabPages, TravisCI, AppVeyor, GitLabCI, Codecov, Coveralls]
+const BADGE_ORDER = [
+    Documenter{GitLabCI},
+    Documenter{TravisCI},
+    TravisCI,
+    AppVeyor,
+    GitLabCI,
+    Codecov,
+    Coveralls,
+]
 
 end
