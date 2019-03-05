@@ -186,22 +186,14 @@ function gen_readme(pkg_dir::AbstractString, t::Template)
     text = "# $pkg\n"
     done = []
     # Generate the ordered badges first, then add any remaining ones to the right.
-    for plugin_type in BADGE_ORDER
-        if haskey(t.plugins, plugin_type)
-            text *= "\n"
-            text *= join(
-                map(string, badges(t.plugins[plugin_type]), t.user, pkg),
-                "\n",
-            )
-            push!(done, plugin_type)
+    foreach(BADGE_ORDER) do T
+        if haskey(t.plugins, T)
+            text *= "\n" * join(badges(t.plugins[T], t.user, pkg), "\n")
+            push!(done, T)
         end
     end
-    for plugin_type in setdiff(keys(t.plugins), done)
-        text *= "\n"
-        text *= join(
-            badges(t.plugins[plugin_type], t.user, pkg),
-            "\n",
-        )
+    foreach(setdiff(keys(t.plugins), done)) do T
+        text *= "\n" * join(badges(t.plugins[T], t.user, pkg), "\n")
     end
 
     gen_file(joinpath(pkg_dir, "README.md"), text)

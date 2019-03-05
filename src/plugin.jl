@@ -1,3 +1,9 @@
+source(::AbstractPlugin) = nothing
+destination(::AbstractPlugin) = ""
+gitignore(::AbstractPlugin) = String[]
+badges(::AbstractPlugin) = Badge[]
+view(::AbstractPlugin) = Dict{String, Any}()
+
 """
 A plugin which has been generated with [`@plugin`](@ref).
 You should not manually create subtypes!
@@ -154,18 +160,16 @@ end
 Generate Markdown badges for the plugin.
 
 # Arguments
-* `p::Plugin`: Plugin whose badges we are generating.
+* `p::AbstractPlugin`: Plugin whose badges we are generating.
 * `user::AbstractString`: Username of the package creator.
 * `pkg_name::AbstractString`: Name of the package.
 
 Returns an array of Markdown badges.
 """
-badges(::AbstractPlugin, ::AbstractString, ::AbstractString) = String[]
-
-function badges(p::GeneratedPlugin, user::AbstractString, pkg_name::AbstractString)
+function badges(p::AbstractPlugin, user::AbstractString, pkg_name::AbstractString)
     # Give higher priority to replacements defined in the plugin's view.
-    view = merge(Dict("USER" => user, "PKGNAME" => pkg_name), p.view)
-    return map(b -> substitute(string(b), view), badges(p))
+    subs = merge(Dict("USER" => user, "PKGNAME" => pkg_name), view(p))
+    return map(b -> substitute(string(b), subs), badges(p))
 end
 
 """
