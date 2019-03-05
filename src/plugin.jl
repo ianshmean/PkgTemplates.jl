@@ -1,8 +1,24 @@
-source(::AbstractPlugin) = nothing
-destination(::AbstractPlugin) = ""
-gitignore(::AbstractPlugin) = String[]
-badges(::AbstractPlugin) = Badge[]
+"""
+    view(p::AbstractPlugin) -> Dict{String, Any}
+
+Return extra substitutions to be made for this plugin.
+See [`substitute`](@ref) for more details.
+"""
 view(::AbstractPlugin) = Dict{String, Any}()
+
+"""
+    gitignore(p::AbstractPlugin) -> Vector{String}
+
+Return patterns that should be added to generated packages' `.gitignore` files.
+"""
+gitignore(::AbstractPlugin) = String[]
+
+"""
+    badges(p::AbstractPlugin) -> Vector{Badge}
+
+Return a list of [`Badge`](@ref)s to be added to generated packages' `README.md` files.
+"""
+badges(::AbstractPlugin) = Badge[]
 
 """
 A plugin which has been generated with [`@plugin`](@ref).
@@ -10,8 +26,20 @@ You should not manually create subtypes!
 """
 abstract type GeneratedPlugin <:AbstractPlugin end
 
+"""
+    source(p::GeneratedPlugin) -> Union{String, Nothing}
+
+Return the path to a plugin's configuration file, or `nothing` to indicate no file.
+"""
 source(p::GeneratedPlugin) = p.src
+
+"""
+    destination(p::GeneratedPlugin) -> String
+
+Return the destination, relative to the package root, of a plugin's configuration file.
+"""
 destination(p::GeneratedPlugin) = p.dest
+
 gitignore(p::GeneratedPlugin) = p.gitignore
 badges(p::GeneratedPlugin) = p.badges
 view(p::GeneratedPlugin) = p.view
@@ -110,7 +138,8 @@ end
 """
     Badge(hover::AbstractString, image::AbstractString, link::AbstractString) -> Badge
 
-Container for Markdown badge data.
+Container for Markdown badge data. Each argument can contain placeholders to be filled in
+by [`substitute`](@ref).
 
 # Arguments
 * `hover::AbstractString`: Text to appear when the mouse is hovered over the badge.
@@ -124,6 +153,13 @@ struct Badge
 end
 
 Base.show(io::IO, b::Badge) = print(io, "[![$(b.hover)]($(b.image))]($(b.link))")
+
+# Format a plugin's badges as a list of strings, with all substitutions applied.
+function badges(p::AbstractPlugin, user::AbstractString, pkg_name::AbstractString)
+    # Give higher priority to replacements defined in the plugin's view.
+    subs = merge(Dict("USER" => user, "PKGNAME" => pkg_name), view(p))
+    return map(b -> substitute(string(b), subs), badges(p))
+end
 
 """
     gen_plugin(p::AbstractPlugin, t::Template, pkg_name::AbstractString) -> Vector{String}
@@ -143,42 +179,22 @@ function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
     source(p) === nothing && return String[]
     text = substitute(
         read(source(p), String),
-        t;
-        view=merge(Dict("PKGNAME" => pkg_name), p.view),
+        t,
+        merge(Dict("PKGNAME" => pkg_name), p.view),
     )
     gen_file(joinpath(t.dir, pkg_name, destination(p)), text)
     return [destination(p)]
 end
 
 """
-    badges(
-        p::AbstractPlugin,
-        user::AbstractString,
-        pkg_name::AbstractString,
-    ) -> Vector{String}
-
-Generate Markdown badges for the plugin.
-
-# Arguments
-* `p::AbstractPlugin`: Plugin whose badges we are generating.
-* `user::AbstractString`: Username of the package creator.
-* `pkg_name::AbstractString`: Name of the package.
-
-Returns an array of Markdown badges.
-"""
-function badges(p::AbstractPlugin, user::AbstractString, pkg_name::AbstractString)
-    # Give higher priority to replacements defined in the plugin's view.
-    subs = merge(Dict("USER" => user, "PKGNAME" => pkg_name), view(p))
-    return map(b -> substitute(string(b), subs), badges(p))
-end
-
-"""
     interactive(T::Type{<:AbstractPlugin}) -> T
 
-Interactively create a plugin of type `T`.
+Interactively create a plugin of type `T`. When this method is implemented for a type, it
+becomes available to [`Template`](@ref)s created with [`interactive_template`](@ref).
 """
 interactive(T::Type{<:GeneratedPlugin}) = T(promptconfig(T))
 
+# Interactively get the configuration file path.
 function promptconfig(T::Type{<:GeneratedPlugin})
     print(nameof(T), ": Enter the config template filename ")
     default = source(T)

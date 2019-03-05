@@ -57,9 +57,7 @@ struct Template
 
         # If no username was set, look for one in the global git config.
         # Note: This is one of a few GitHub specifics (maybe we could use the host value).
-        if isempty(user)
-            user = LibGit2.getconfig("github.user", "")
-        end
+        isempty(user) && (user = LibGit2.getconfig("github.user", ""))
         if isempty(user)
             throw(ArgumentError("No GitHub username found, set one with user=username"))
         end
@@ -225,7 +223,5 @@ function interactive_template(; git::Bool=true, fast::Bool=false)
 
     return Template(; git=git, kwargs...)
 end
-
-leaves(T::Type)::Vector{DataType} = isconcretetype(T) ? [T] : vcat(leaves.(subtypes(T))...)
 
 missingopt(name) = @warn "Git config option '$name' missing, package generation will fail unless you supply a GitConfig"

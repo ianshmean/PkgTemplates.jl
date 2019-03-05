@@ -2,20 +2,20 @@ const DOCUMENTER_UUID = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 const RESERVED_KWS = [:modules, :format, :pages, :repo, :sitename, :authors, :assets]
 
 """
-    Documenter{T<:Union{GitLabCI, TravisCI}}(;
+    Documenter{T<:Union{GitLabCI, TravisCI, Nothing}}(;
         assets::Vector{<:AbstractString}=String[],
         kwargs::Union{Dict, NamedTuple}=Dict(),
     ) -> Documenter{T}
 
 Add `Documenter{T}` to a template's plugins to add support for documentation
 generation via [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl), and deployment
-via `T`, where `T` is some supported CI plugin.
+via `T`, where `T` is some supported CI plugin, or `Nothing` to only support local
+documentation builds.
 
 !!! note
     If deploying documentation with Travis CI, don't forget to complete the required
     configuration (see
     [here](https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#SSH-Deploy-Keys-1)).
-
 """
 struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: AbstractPlugin
     assets::Vector{String}
@@ -42,10 +42,9 @@ end
 # Windows Git also recognizes these paths.
 gitignore(::Documenter) = ["/docs/build", "/docs/site"]
 
-badges(p::Documenter) = badges(typeof(p))
-badges(::Type{Documenter{Nothing}}) = Badge[]
+badges(::Documenter{Nothing}) = Badge[]
 
-function badges(::Type{<:Documenter})
+function badges(::Documenter)
     return [
         Badge(
             "Stable",
@@ -60,7 +59,7 @@ function badges(::Type{<:Documenter})
     ]
 end
 
-function badges(::Type{Documenter{GitLabCI}})
+function badges(::Documenter{GitLabCI})
     return [Badge(
         "Dev",
         "https://img.shields.io/badge/docs-dev-blue.svg",
@@ -68,6 +67,7 @@ function badges(::Type{Documenter{GitLabCI}})
     )]
 end
 
+# Add the deploydocs section to make.jl, only for Travis CI.
 maybe_deploydocs(::Documenter, ::Template, ::AbstractString) = nothing
 function maybe_deploydocs(::Documenter{TravisCI}, t::Template, pkg_name::AbstractString)
     make = joinpath(t.dir, pkg_name, "docs", "make.jl")

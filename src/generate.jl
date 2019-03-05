@@ -1,6 +1,6 @@
 """
-    generate(pkg::AbstractString, t::Template) -> Nothing
-    generate(t::Template, pkg::AbstractString) -> Nothing
+    generate(pkg::AbstractString, t::Template; git::Bool=true)
+    generate(t::Template, pkg::AbstractString; git::Bool=true)
 
 Generate a package named `pkg` from `t`. If `git` is `false`, no Git repository is created.
 """
@@ -70,7 +70,7 @@ function generate(
 
         @info "New package is at $pkg_dir"
     catch e
-        rm(pkg_dir; recursive=true)
+        rm(pkg_dir; recursive=true, force=true)
         rethrow(e)
     end
 end
@@ -102,17 +102,7 @@ function generate_interactive(
     return t
 end
 
-"""
-    gen_tests(pkg_dir::AbstractString, t::Template) -> Vector{String}
-
-Create the test entrypoint in `pkg_dir`.
-
-# Arguments
-* `pkg_dir::AbstractString`: The package directory in which the files will be generated
-* `t::Template`: The template whose tests we are generating.
-
-Returns an array of generated file/directory names.
-"""
+# Create the test entrypoint.
 function gen_tests(pkg_dir::AbstractString, t::Template)
     # TODO: Silence Pkg for this section? Adding and removing Test creates a lot of noise.
     proj = Base.current_project()
@@ -153,34 +143,14 @@ function gen_tests(pkg_dir::AbstractString, t::Template)
     return ["test/"]
 end
 
-"""
-    gen_require(pkg_dir::AbstractString, t::Template) -> Vector{String}
-
-Create the `REQUIRE` file in `pkg_dir`.
-
-# Arguments
-* `pkg_dir::AbstractString`: The directory in which the files will be generated.
-* `t::Template`: The template whose REQUIRE we are generating.
-
-Returns an array of generated file/directory names.
-"""
+# Create the package REQUIRE file.
 function gen_require(pkg_dir::AbstractString, t::Template)
     text = "julia $(version_floor(t.julia_version))\n"
     gen_file(joinpath(pkg_dir, "REQUIRE"), text)
     return ["REQUIRE"]
 end
 
-"""
-    gen_readme(pkg_dir::AbstractString, t::Template) -> Vector{String}
-
-Create a README in `pkg_dir` with badges for each enabled plugin.
-
-# Arguments
-* `pkg_dir::AbstractString`: The directory in which the files will be generated.
-* `t::Template`: The template whose README we are generating.
-
-Returns an array of generated file/directory names.
-"""
+# Create the package README.
 function gen_readme(pkg_dir::AbstractString, t::Template)
     pkg = basename(pkg_dir)
     text = "# $pkg\n"
@@ -200,17 +170,7 @@ function gen_readme(pkg_dir::AbstractString, t::Template)
     return ["README.md"]
 end
 
-"""
-    gen_gitignore(pkg_dir::AbstractString, t::Template) -> Vector{String}
-
-Create a `.gitignore` in `pkg_dir`.
-
-# Arguments
-* `pkg_dir::AbstractString`: The directory in which the files will be generated.
-* `t::Template`: The template whose .gitignore we are generating.
-
-Returns an array of generated file/directory names.
-"""
+# Create the package gitignore.
 function gen_gitignore(pkg_dir::AbstractString, t::Template)
     pkg = basename(pkg_dir)
     init = [".DS_Store", "/dev/"]
@@ -227,17 +187,7 @@ function gen_gitignore(pkg_dir::AbstractString, t::Template)
     return files
 end
 
-"""
-    gen_license(pkg_dir::AbstractString, t::Template) -> Vector{String}
-
-Create a license in `pkg_dir`.
-
-# Arguments
-* `pkg_dir::AbstractString`: The directory in which the files will be generated.
-* `t::Template`: The template whose LICENSE we are generating.
-
-Returns an array of generated file/directory names.
-"""
+# Create the package license.
 function gen_license(pkg_dir::AbstractString, t::Template)
     isempty(t.license) && return String[]
 
@@ -247,91 +197,3 @@ function gen_license(pkg_dir::AbstractString, t::Template)
     gen_file(joinpath(pkg_dir, "LICENSE"), text)
     return ["LICENSE"]
 end
-
-"""
-    gen_file(file::AbstractString, text::AbstractString) -> Int
-
-Create a new file containing some given text. Always ends the file with a newline.
-
-# Arguments
-* `file::AbstractString`: Path to the file to be created.
-* `text::AbstractString`: Text to write to the file.
-
-Returns the number of bytes written to the file.
-"""
-function gen_file(file::AbstractString, text::AbstractString)
-    mkpath(dirname(file))
-    if !endswith(text , "\n")
-        text *= "\n"
-    end
-    return write(file, text)
-end
-
-"""
-    version_floor(v::VersionNumber=VERSION) -> String
-
-Format the given Julia version.
-
-# Keyword arguments
-* `v::VersionNumber=VERSION`: Version to floor.
-
-Returns "major.minor" for the most recent release version relative to v. For prereleases
-with v.minor == v.patch == 0, returns "major.minor-".
-"""
-function version_floor(v::VersionNumber=VERSION)
-    return if isempty(v.prerelease) || v.patch > 0
-        "$(v.major).$(v.minor)"
-    else
-        "$(v.major).$(v.minor)-"
-    end
-end
-
-"""
-    substitute(template::AbstractString, view::Dict{String, Any}) -> String
-    substitute(
-        template::AbstractString,
-        pkg_template::Template;
-        view::Dict{String, Any}=Dict{String, Any}(),
-    ) -> String
-
-Replace placeholders in `template` with values in `view` via
-[`Mustache`](https://github.com/jverzani/Mustache.jl). `template` is not modified.
-If `pkg_template` is supplied, some default replacements are also performed.
-
-For information on how to structure `template`, see "Defining Template Files" section in
-[Custom Plugins](@ref).
-
-**Note**: Conditionals in `template` without a corresponding key in `view` won't error,
-but will simply be evaluated as false.
-"""
-substitute(template::AbstractString, view::Dict{String, Any}) = render(template, view)
-
-function substitute(
-    template::AbstractString,
-    pkg_template::Template;
-    view::Dict{String, Any}=Dict{String, Any}(),
-)
-    # Don't use version_floor here because we don't want the trailing '-' on prereleases.
-    v = pkg_template.julia_version
-    d = Dict{String, Any}(
-        "USER" => pkg_template.user,
-        "VERSION" => "$(v.major).$(v.minor)",
-        "GH_PAGES" => haskey(pkg_template.plugins, Documenter{TravisCI}),
-        "GL_PAGES" => haskey(pkg_template.plugins, Documenter{GitLabCI}),
-        "CODECOV" => haskey(pkg_template.plugins, Codecov),
-        "COVERALLS" => haskey(pkg_template.plugins, Coveralls),
-    )
-
-    # d["COVERAGE"] is true whenever a coverage plugin is enabled.
-    # TODO: This doesn't handle user-defined coverage plugins.
-    # Maybe we need an abstract CoveragePlugin <: GenericPlugin?
-    # That wouldn't be able to express types like GitLabCI, which don't always do coverage.
-    d["COVERAGE"] = |(
-        d["CODECOV"],
-        d["COVERALLS"],
-        haskey(pkg_template.plugins, GitLabCI) && pkg_template.plugins[GitLabCI].coverage,
-    )
-    return substitute(template, merge(d, view))
-end
-
-splitjl(pkg::AbstractString) = endswith(pkg, ".jl") ? pkg[1:end-3] : pkg

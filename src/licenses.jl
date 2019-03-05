@@ -27,12 +27,7 @@ Print the text of `license`. Errors if the license is not found.
 show_license(io::IO, license::AbstractString) = print(io, read_license(license))
 show_license(license::AbstractString) = show_license(stdout, license)
 
-"""
-    read_license(license::AbstractString) -> String
-
-Returns the contents of `license`. Errors if the license is not found. Use
-[`available_licenses`](@ref) to view available licenses.
-"""
+# Read the contents of a license.
 function read_license(license::AbstractString)
     path = joinpath(LICENSE_DIR, license)
     if isfile(path)

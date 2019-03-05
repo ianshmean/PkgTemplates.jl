@@ -1,6 +1,6 @@
 # Returns a templated docstring for the plugins below.
-function make_docstring(T::String, name::Union{String, Nothing}, file::String, url::String)
-    file = repr(replace(file, DEFAULTS_DIR => "<defaults>"))
+function make_docstring(T::String, name::String, file::Union{String, Nothing}, url::String)
+    file = repr(file === nothing ? file : replace(file, DEFAULTS_DIR => "<defaults>"))
     return """
             $T(file::Union{AbstractString, Nothing}=$file) -> $T
 
@@ -15,14 +15,14 @@ end
     "https://ci.appveyor.com/project/{{USER}}/{{PKGNAME}}-jl",
 )
 
-"""$(make_docstring("Codecov", "Codecov", "nothing", "https://codecov.io"))"""
+"""$(make_docstring("Codecov", "Codecov", nothing, "https://codecov.io"))"""
 @plugin Codecov nothing => ".codecov.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=Badge(
     "Coverage",
     "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl/branch/master/graph/badge.svg",
     "https://codecov.io/gh/{{USER}}/{{PKGNAME}}.jl",
 )
 
-"""$(make_docstring("Coveralls", "Coveralls", "nothing", "https://coveralls.io"))"""
+"""$(make_docstring("Coveralls", "Coveralls", nothing, "https://coveralls.io"))"""
 @plugin Coveralls nothing => ".coveralls.yml" gitignore=["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] badges=Badge(
     "Coverage",
     "https://coveralls.io/repos/github/{{USER}}/{{PKGNAME}}.jl/badge.svg?branch=master",

@@ -25,9 +25,6 @@ export
     Codecov,
     Coveralls
 
-const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
-default_file(file::AbstractString) = joinpath(DEFAULTS_DIR, file)
-
 """
 A plugin to be added to a [`Template`](@ref), which adds some functionality or integration.
 """
@@ -37,6 +34,7 @@ include("licenses.jl")
 include("template.jl")
 include("generate.jl")
 include("plugin.jl")
+include("utils.jl")
 include(joinpath("plugins", "generated.jl"))
 include(joinpath("plugins", "documenter.jl"))
 
