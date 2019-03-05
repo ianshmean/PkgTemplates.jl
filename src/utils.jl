@@ -2,7 +2,7 @@
 const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
 
 # Join a basename to the default directory.
-default_file(file::AbstractString) = joinpath(DEFAULTS_DIR, file)
+default_file(files::AbstractString...) = joinpath(DEFAULTS_DIR, files...)
 
 """
     gen_file(file::AbstractString, text::AbstractString) -> Int
@@ -82,11 +82,12 @@ function substitute(
         d["COVERALLS"],
         haskey(pkg_template.plugins, GitLabCI) && pkg_template.plugins[GitLabCI].coverage,
     )
+
     return substitute(template, merge(d, view))
 end
 
 # Remove the trailing ".jl" from a package name.
 splitjl(pkg::AbstractString) = endswith(pkg, ".jl") ? pkg[1:end-3] : pkg
 
-# Get a list of all concrete subtypes of some type, including itself.
+# Get a list of all concrete subtypes of some type.
 leaves(T::Type)::Vector{DataType} = isconcretetype(T) ? [T] : vcat(leaves.(subtypes(T))...)
