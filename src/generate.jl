@@ -1,3 +1,5 @@
+const TEST_UUID = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
 """
     generate(pkg::AbstractString, t::Template)
     generate(t::Template, pkg::AbstractString)
@@ -101,27 +103,17 @@ end
 
 # Create the test entrypoint.
 function gen_tests(pkg_dir::AbstractString, t::Template)
-    # TODO: Silence Pkg for this section? Adding and removing Test creates a lot of noise.
     proj = Base.current_project()
     try
+        # Add the Test dependency as a test-only dependency.
+        # To avoid visual noise from adding/removing the dependency, insert it manually.
         Pkg.activate(pkg_dir)
-        Pkg.add("Test")
-
-        # Move the Test dependency into the [extras] section.
-        toml = read(joinpath(pkg_dir, "Project.toml"), String)
-        lines = split(toml, "\n")
-        idx = findfirst(l -> startswith(l, "Test = "), lines)
-        testdep = lines[idx]
-        deleteat!(lines, idx)
-        toml = join(lines, "\n") * """
-        [extras]
-        $testdep
-
-        [targets]
-        test = ["Test"]
-        """
-        gen_file(joinpath(pkg_dir, "Project.toml"), toml)
-        Pkg.update()  # Regenerate Manifest.toml (this cleans up Project.toml too).
+        lines = split(read(joinpath(pkg_dir, "Project.toml"), String), "\n")
+        dep = "Test = $(repr(TEST_UUID))"
+        push!(lines, "[extras]", dep, "", "[targets]", "test = [\"Test\"]")
+        gen_file(joinpath(pkg_dir, "Project.toml"), join(lines, "\n"))
+        touch(joinpath(pkg_dir, "Manifest.toml"))  # File must exist to be modified by Pkg.
+        Pkg.update()  # Clean up both Manifest.toml and Project.toml.
     finally
         proj === nothing ? Pkg.activate() : Pkg.activate(proj)
     end
