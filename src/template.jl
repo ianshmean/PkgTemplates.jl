@@ -24,6 +24,7 @@ create a template, you can use [`interactive_template`](@ref) instead.
 * `julia_version::VersionNumber=$VERSION`: Minimum allowed Julia version.
 * `ssh::Bool=false`: Whether or not to use SSH for the remote.
 * `manifest::Bool=false`: Whether or not to commit the `Manifest.toml`.
+* `git::Bool=true`: Whether or not to create a Git repository for generated packages.
 * `plugins::Vector{<:AbstractPlugin}=AbstractPlugin[]`: A list of plugins that the
   package will include.
 """
@@ -36,6 +37,7 @@ struct Template
     julia_version::VersionNumber
     ssh::Bool
     manifest::Bool
+    git::Bool
     plugins::Dict{DataType, <:AbstractPlugin}
 
     function Template(;
@@ -47,8 +49,8 @@ struct Template
         julia_version::VersionNumber=VERSION,
         ssh::Bool=false,
         manifest::Bool=false,
-        plugins::Vector{<:AbstractPlugin}=AbstractPlugin[],
         git::Bool=true,
+        plugins::Vector{<:AbstractPlugin}=AbstractPlugin[],
     )
         # Check for required Git options for package generation
         # (you can't commit to a repository without them).
@@ -59,10 +61,10 @@ struct Template
         # Note: This is one of a few GitHub specifics (maybe we could use the host value).
         isempty(user) && (user = LibGit2.getconfig("github.user", ""))
         if isempty(user)
-            throw(ArgumentError("No GitHub username found, set one with user=username"))
+            throw(ArgumentError("No username found, set one with user=username"))
         end
 
-        host = URI(startswith(host, "https://") ? host : "https://$host").host
+        host = URI(occursin("://", host) ? host : "https://$host").host
 
         if !isempty(license) && !isfile(joinpath(LICENSE_DIR, license))
             throw(ArgumentError("License '$license' is not available"))
@@ -82,7 +84,18 @@ struct Template
             @warn "Plugin list contained duplicates, only the last of each type was kept"
         end
 
-        new(user, host, license, authors, dir, julia_version, ssh, manifest, plugin_dict)
+        return new(
+            user,
+            host,
+            license,
+            authors,
+            dir,
+            julia_version,
+            ssh,
+            manifest,
+            git,
+            plugin_dict,
+        )
     end
 end
 
@@ -126,7 +139,7 @@ end
 Interactively create a [`Template`](@ref). If `fast` is set, defaults will be assumed for
 all values except username and plugins.
 """
-function interactive_template(; git::Bool=true, fast::Bool=false)
+function interactive_template(; fast::Bool=false)
     @info "Default values are shown in [brackets]"
     # Getting the leaf types in a separate thread eliminates an awkward wait after
     # "Select plugins" is printed.
@@ -142,6 +155,15 @@ function interactive_template(; git::Bool=true, fast::Bool=false)
         default_user
     else
         throw(ArgumentError("Username is required"))
+    end
+
+    git = kwargs[:git] = if fast
+        true
+    else
+        default_git = true
+        print("Create a Git repository? [yes]: ")
+        git = readline()
+        isempty(git) ? default_git : uppercase(git) in ["Y", "YES", "T", "TRUE"]
     end
 
     kwargs[:host] = if fast || !git
@@ -203,7 +225,7 @@ function interactive_template(; git::Bool=true, fast::Bool=false)
         uppercase(readline()) in ["Y", "YES", "T", "TRUE"]
     end
 
-    kwargs[:manifest] = if fast
+    kwargs[:manifest] = if fast || !git
         false
     else
         print("Commit Manifest.toml? [no]: ")
