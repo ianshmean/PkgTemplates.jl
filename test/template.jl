@@ -1,15 +1,15 @@
 @testset "Template" begin
     @testset "Default fields" begin
-        let t = Template(; user=me)
-            @test t.user == me
-            @test t.license == "MIT"
-            @test t.authors == LibGit2.getconfig("user.name", "")
-            @test t.dir == default_dir
-            @test t.julia_version == VERSION
-            @test !t.ssh
-            @test !t.manifest
-            @test isempty(t.plugins)
-        end
+        t = Template(; user=me)
+        @test t.user == me
+        @test t.license == "MIT"
+        @test t.authors == LibGit2.getconfig("user.name", "")
+        @test t.dir == default_dir
+        @test t.julia_version == VERSION
+        @test !t.ssh
+        @test !t.manifest
+        @test t.git
+        @test isempty(t.plugins)
     end
 
     @testset "Keywords" begin
@@ -18,76 +18,74 @@
                 if isempty(LibGit2.getconfig("github.user", ""))
                     @test_throws ArgumentError Template()
                 else
-                    let t = Template()
-                        @test t.user == LibGit2.getconfig("github.user", "")
-                    end
+                    t = Template()
+                    @test t.user == LibGit2.getconfig("github.user", "")
                 end
             end
         end
 
         @testset "license" begin
-            let t = Template(; user=me, license="")
-                @test t.license == ""
-            end
-            let t = Template(; user=me, license="MPL")
-                @test t.license == "MPL"
-            end
+            t = Template(; user=me, license="")
+            @test t.license == ""
+
+            t = Template(; user=me, license="MPL")
+            @test t.license == "MPL"
             @test_throws ArgumentError Template(; user=me, license="FakeLicense")
         end
 
         @testset "Authors" begin
-            let t = Template(; user=me, authors="Some Guy")
-                @test t.authors == "Some Guy"
-            end
+            t = Template(; user=me, authors="Some Guy")
+            @test t.authors == "Some Guy"
 
             @testset "Vectors should be comma-joined" begin
-                let t = Template(; user=me, authors=["Guy", "Gal"])
-                    @test t.authors == "Guy, Gal"
-                end
+                t = Template(; user=me, authors=["Guy", "Gal"])
+                @test t.authors == "Guy, Gal"
             end
         end
 
         @testset "dir" begin
-            let t = Template(; user=me, dir=test_file)
-                @test t.dir == abspath(test_file)
-            end
+            t = Template(; user=me, dir=test_dir)
+            @test t.dir == abspath(test_dir)
 
             if Sys.isunix()  # ~ means temporary file on Windows, not $HOME.
                 @testset "'~' should be replaced by homedir" begin
-                    let t = Template(; user=me, dir="~/$(basename(test_file))")
-                        @test t.dir == joinpath(homedir(), basename(test_file))
-                    end
+                    t = Template(; user=me, dir="~/$(basename(test_file))")
+                    @test t.dir == joinpath(homedir(), basename(test_file))
                 end
             end
         end
 
         @testset "julia_version" begin
-            let t = Template(; user=me, julia_version=v"0.1.2")
-                @test t.julia_version == v"0.1.2"
-            end
+            t = Template(; user=me, julia_version=v"0.1.2")
+            @test t.julia_version == v"0.1.2"
         end
 
         @testset "ssh" begin
-            let t = Template(; user=me, ssh=true)
-                @test t.ssh
-            end
+            t = Template(; user=me, ssh=true)
+            @test t.ssh
         end
 
         @testset "manifest" begin
-            let t = Template(; user=me, manifest=true)
-                @test t.manifest
-            end
+            t = Template(; user=me, manifest=true)
+            @test t.manifest
         end
 
         @testset "git" begin
-            let t = Template(; user=me, git=false)
-                @test !t.git
+            t = Template(; user=me, git=false)
+            @test !t.git
+
+            @testset "Warnings" begin
+                if isempty(LibGit2.getconfig("user.name", ""))
+                    @test_logs (:warn, r"user.name") match_mode=:any Template(; user=me)
+                    @test_logs Template(; user=me, git=false)
+                else
+                    @test_logs Template(; user=me)
+                end
             end
         end
 
         @testset "plugins" begin
-            # The template should contain whatever plugins you give it.
-            let t = Template(
+            t = Template(;
                 user=me,
                 plugins=[
                     Documenter{TravisCI}(),
@@ -97,15 +95,15 @@
                     Coveralls(),
                 ],
             )
-                @test Set(keys(t.plugins)) == Set(map(typeof, values(t.plugins))) == Set(
-                    [Documenter{TravisCI}, TravisCI, AppVeyor, Codecov, Coveralls])
-            end
+            @test Set(keys(t.plugins)) == Set(map(typeof, values(t.plugins))) == Set(
+                [Documenter{TravisCI}, TravisCI, AppVeyor, Codecov, Coveralls])
 
             @testset "Duplicate plugins should warn" begin
-                @test_logs (:warn, r"duplicates") match_mode=:any t = Template(
+                t = @test_logs (:warn, r"duplicates") match_mode=:any Template(;
                     user=me,
                     plugins=[TravisCI(), TravisCI()],
                 )
+                @test haskey(t.plugins, TravisCI)
             end
         end
     end

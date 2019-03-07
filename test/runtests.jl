@@ -11,8 +11,8 @@ const PT = PkgTemplates
 const me = "christopher-dG"
 const test_pkg = "TestPkg"
 const fake_path = "/this/file/does/not/exist"
+const test_dir = mktempdir()
 const test_file = tempname()
-const default_dir = Pkg.devdir()
 const gitconfig = GitConfig(joinpath(@__DIR__, "gitconfig"))
 const template_text = """
     PKGNAME: {{PKGNAME}}
@@ -28,12 +28,14 @@ write(test_file, template_text)
 mktempdir() do temp_dir
     mkdir(joinpath(temp_dir, "dev"))
     pushfirst!(DEPOT_PATH, temp_dir)
-    cd(temp_dir) do
-        @testset "PkgTemplates.jl" begin
-            include("template.jl")
-            include("show.jl")
-        end
+    global default_dir = Pkg.devdir()
+    @testset "PkgTemplates.jl" begin
+        include("template.jl")
+        include("show.jl")
+        include("utils.jl")
+        include("licenses.jl")
     end
 end
 
+rm(test_dir; force=true, recursive=true)
 rm(test_file; force=true)

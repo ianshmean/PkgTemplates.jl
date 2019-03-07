@@ -167,12 +167,6 @@ end
     rm(temp_dir; recursive=true)
 end
 
-@testset "Git-less template creation" begin
-    if isempty(LibGit2.getconfig("user.name", ""))
-        @test_logs Template(; user=me, git=false)
-    end
-end
-
 @testset "Git-less package generation" begin
     t = Template(; user=me)
     generate(test_pkg, t; git=false)
