@@ -25,6 +25,8 @@ create a template, you can use [`interactive_template`](@ref) instead.
 * `ssh::Bool=false`: Whether or not to use SSH for the remote.
 * `manifest::Bool=false`: Whether or not to commit the `Manifest.toml`.
 * `git::Bool=true`: Whether or not to create a Git repository for generated packages.
+* `develop::Bool=true`: Whether or not to `develop` generated packages in the active
+  environment.
 * `plugins::Vector{<:AbstractPlugin}=AbstractPlugin[]`: A list of plugins that the
   package will include.
 """
@@ -38,6 +40,7 @@ struct Template
     ssh::Bool
     manifest::Bool
     git::Bool
+    develop::Bool
     plugins::Dict{DataType, <:AbstractPlugin}
 
     function Template(;
@@ -50,6 +53,7 @@ struct Template
         ssh::Bool=false,
         manifest::Bool=false,
         git::Bool=true,
+        develop::Bool=true,
         plugins::Vector{<:AbstractPlugin}=AbstractPlugin[],
     )
         # Check for required Git options for package generation
@@ -94,6 +98,7 @@ struct Template
             ssh,
             manifest,
             git,
+            develop,
             plugin_dict,
         )
     end
@@ -118,6 +123,8 @@ function Base.show(io::IO, t::Template)
     println(io, spc, "→ Minimum Julia version: v", version_floor(t.julia_version))
     println(io, spc, "→ SSH remote: ", t.ssh ? "Yes" : "No")
     println(io, spc, "→ Commit Manifest.toml: ", t.manifest ? "Yes" : "No")
+    println(io, spc, "→ Create Git repository: ", t.git ? "Yes" : "No")
+    println(io, spc, "→ Develop packages: ", t.develop ? "Yes" : "No")
 
     print(io, spc, "→ Plugins:")
     if isempty(t.plugins)

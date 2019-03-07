@@ -65,8 +65,10 @@ function generate(
             @info "Committed generated files"
         end
 
-        # Add the new package to the current environment.
-        Pkg.develop(PackageSpec(path=pkg_dir))
+        if t.develop
+            # Add the new package to the current environment.
+            Pkg.develop(PackageSpec(path=pkg_dir))
+        end
 
         @info "New package is at $pkg_dir"
     catch e

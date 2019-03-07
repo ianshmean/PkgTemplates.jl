@@ -12,6 +12,8 @@
               → Minimum Julia version: v$(PkgTemplates.version_floor())
               → SSH remote: No
               → Commit Manifest.toml: No
+              → Create Git repository: Yes
+              → Develop packages: Yes
               → Plugins: None
             """
         @test sprint(show, t) == rstrip(expected)
@@ -26,9 +28,19 @@
               → Minimum Julia version: v$(PkgTemplates.version_floor())
               → SSH remote: Yes
               → Commit Manifest.toml: Yes
+              → Create Git repository: Yes
+              → Develop packages: Yes
               → Plugins: None
             """
         @test sprint(show, t) == rstrip(expected)
+
+        t = Template(; user=me, plugins=[TravisCI(), Codecov()])
+        pattern = r"""
+              → Plugins:
+                • .*
+                • .*
+            """
+        @test match(pattern, sprint(show, t) * "\n") !== nothing
     end
 
     @testset "Plugins" begin
