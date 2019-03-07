@@ -85,16 +85,13 @@
         end
 
         @testset "plugins" begin
-            t = Template(;
-                user=me,
-                plugins=[
-                    Documenter{TravisCI}(),
-                    TravisCI(),
-                    AppVeyor(),
-                    Codecov(),
-                    Coveralls(),
-                ],
-            )
+            t = Template(; user=me, plugins=[
+                Documenter{TravisCI}(),
+                TravisCI(),
+                AppVeyor(),
+                Codecov(),
+                Coveralls(),
+            ])
             @test Set(keys(t.plugins)) == Set(map(typeof, values(t.plugins))) == Set(
                 [Documenter{TravisCI}, TravisCI, AppVeyor, Codecov, Coveralls])
 

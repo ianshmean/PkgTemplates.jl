@@ -40,7 +40,7 @@ struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: AbstractPlugin
 end
 
 # Windows Git also recognizes these paths.
-gitignore(::Documenter) = ["/docs/build", "/docs/site"]
+gitignore(::Documenter) = ["/docs/build/", "/docs/site/"]
 
 badges(::Documenter{Nothing}) = Badge[]
 

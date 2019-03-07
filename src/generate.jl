@@ -145,9 +145,7 @@ end
 function make_gitignore(t::Template, pkg_dir::AbstractString)
     t.git || return ()
 
-    init = [".DS_Store", "/dev/"]
-    entries = mapfoldl(p -> gitignore(p), append!, values(t.plugins); init=init)
-
+    entries = mapreduce(gitignore, append!, values(t.plugins); init=[".DS_Store", "/dev/"])
     # Only ignore manifests at the repo root.
     t.manifest || "Manifest.toml" in entries || push!(entries, "/Manifest.toml")
 
