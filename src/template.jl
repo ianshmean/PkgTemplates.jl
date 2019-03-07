@@ -29,6 +29,8 @@ create a template, you can use [`interactive_template`](@ref) instead.
   environment.
 * `plugins::Vector{<:Plugin}=Plugin[]`: A list of plugins that the
   package will include.
+* `interactive::Bool=false`: When set, creates the template interactively from user input,
+  using the previous keywords as a starting point.
 """
 struct Template
     user::String
@@ -42,67 +44,68 @@ struct Template
     git::Bool
     develop::Bool
     plugins::Dict{DataType, <:Plugin}
-
-    function Template(;
-        user::AbstractString="",
-        host::AbstractString="https://github.com",
-        license::AbstractString="MIT",
-        authors::Union{AbstractString, Vector{<:AbstractString}}="",
-        dir::AbstractString=Pkg.devdir(),
-        julia_version::VersionNumber=VERSION,
-        ssh::Bool=false,
-        manifest::Bool=false,
-        git::Bool=true,
-        develop::Bool=true,
-        plugins::Vector{<:Plugin}=Plugin[],
-    )
-        # Check for required Git options for package generation
-        # (you can't commit to a repository without them).
-        git && isempty(LibGit2.getconfig("user.name", "")) && missingopt("user.name")
-        git && isempty(LibGit2.getconfig("user.email", "")) && missingopt("user.email")
-
-        # If no username was set, look for one in the global git config.
-        # Note: This is one of a few GitHub specifics (maybe we could use the host value).
-        isempty(user) && (user = LibGit2.getconfig("github.user", ""))
-        if isempty(user)
-            throw(ArgumentError("No username found, set one with user=username"))
-        end
-
-        host = URI(occursin("://", host) ? host : "https://$host").host
-
-        if !isempty(license) && !isfile(joinpath(LICENSE_DIR, license))
-            throw(ArgumentError("License '$license' is not available"))
-        end
-
-        # If no author was set, look for one in the global git config.
-        if isempty(authors)
-            authors = LibGit2.getconfig("user.name", "")
-        elseif isa(authors, Vector)
-            authors = join(authors, ", ")
-        end
-
-        dir = abspath(expanduser(dir))
-
-        plugin_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
-        if (length(plugins) != length(plugin_dict))
-            @warn "Plugin list contained duplicates, only the last of each type was kept"
-        end
-
-        return new(
-            user,
-            host,
-            license,
-            authors,
-            dir,
-            julia_version,
-            ssh,
-            manifest,
-            git,
-            develop,
-            plugin_dict,
-        )
-    end
 end
+
+function Template(; kwargs...)
+    interactive = Val(get(kwargs, :interactive, false))
+    return make_template(interactive; kwargs...)
+end
+
+function make_template(::Val{false}; kwargs...)
+    user = getkw(kwargs, :user)
+    if isempty(user)
+        throw(ArgumentError("No username found, set one with user=username"))
+    end
+
+    host = getkw(kwargs, :host)
+    host = URI(occursin("://", host) ? host : "https://$host").host
+
+    license = getkw(kwargs, :license)
+    if !isempty(license) && !isfile(joinpath(LICENSE_DIR, license))
+        throw(ArgumentError("License '$license' is not available"))
+    end
+
+    authors = getkw(kwargs, :authors)
+    if authors isa Vector
+        authors = join(authors, ", ")
+    end
+
+    dir = abspath(expanduser(getkw(kwargs, :dir)))
+
+    plugins = getkw(kwargs, :plugins)
+    plugin_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
+    if length(plugins) != length(plugin_dict)
+        @warn "Plugin list contained duplicates, only the last of each type was kept"
+    end
+
+    return Template(
+        user,
+        host,
+        license,
+        authors,
+        dir,
+        getkw(kwargs, :julia_version),
+        getkw(kwargs, :ssh),
+        getkw(kwargs, :manifest),
+        getkw(kwargs, :git),
+        getkw(kwargs, :develop),
+        plugin_dict,
+    )
+end
+
+getkw(kwargs, k) = get(() -> default_kw(Val(k)), kwargs, k)
+
+default_kw(::Val{:user}) = LibGit2.getconfig("github.user", "")
+default_kw(::Val{:host}) = "https://github.com"
+default_kw(::Val{:license}) = "MIT"
+default_kw(::Val{:authors}) = LibGit2.getconfig("user.name", "")
+default_kw(::Val{:dir}) = Pkg.devdir()
+default_kw(::Val{:julia_version}) = VERSION
+default_kw(::Val{:ssh}) = false
+default_kw(::Val{:manifest}) = false
+default_kw(::Val{:git}) = true
+default_kw(::Val{:develop}) = true
+default_kw(::Val{:plugins}) = Plugin[]
 
 function Base.show(io::IO, t::Template)
     maybe(s::String) = isempty(s) ? "None" : s
@@ -147,12 +150,6 @@ Interactively create a [`Template`](@ref). If `fast` is set, defaults will be as
 all values except username and plugins.
 """
 function interactive_template(; fast::Bool=false)
-    @info "Default values are shown in [brackets]"
-    # Getting the leaf types in a separate thread eliminates an awkward wait after
-    # "Select plugins" is printed.
-    plugin_types = @async leaves(Plugin)
-    kwargs = Dict{Symbol, Any}()
-
     default_user = LibGit2.getconfig("github.user", "")
     print("Username [", isempty(default_user) ? "REQUIRED" : default_user, "]: ")
     user = readline()
@@ -252,5 +249,3 @@ function interactive_template(; fast::Bool=false)
 
     return Template(; git=git, kwargs...)
 end
-
-missingopt(name) = @warn "Git config option '$name' missing, package generation will fail unless you supply a GitConfig"
