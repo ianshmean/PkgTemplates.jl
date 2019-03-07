@@ -27,7 +27,7 @@ create a template, you can use [`interactive_template`](@ref) instead.
 * `git::Bool=true`: Whether or not to create a Git repository for generated packages.
 * `develop::Bool=true`: Whether or not to `develop` generated packages in the active
   environment.
-* `plugins::Vector{<:AbstractPlugin}=AbstractPlugin[]`: A list of plugins that the
+* `plugins::Vector{<:Plugin}=Plugin[]`: A list of plugins that the
   package will include.
 """
 struct Template
@@ -41,7 +41,7 @@ struct Template
     manifest::Bool
     git::Bool
     develop::Bool
-    plugins::Dict{DataType, <:AbstractPlugin}
+    plugins::Dict{DataType, <:Plugin}
 
     function Template(;
         user::AbstractString="",
@@ -54,7 +54,7 @@ struct Template
         manifest::Bool=false,
         git::Bool=true,
         develop::Bool=true,
-        plugins::Vector{<:AbstractPlugin}=AbstractPlugin[],
+        plugins::Vector{<:Plugin}=Plugin[],
     )
         # Check for required Git options for package generation
         # (you can't commit to a repository without them).
@@ -83,7 +83,7 @@ struct Template
 
         dir = abspath(expanduser(dir))
 
-        plugin_dict = Dict{DataType, AbstractPlugin}(typeof(p) => p for p in plugins)
+        plugin_dict = Dict{DataType, Plugin}(typeof(p) => p for p in plugins)
         if (length(plugins) != length(plugin_dict))
             @warn "Plugin list contained duplicates, only the last of each type was kept"
         end
@@ -150,7 +150,7 @@ function interactive_template(; fast::Bool=false)
     @info "Default values are shown in [brackets]"
     # Getting the leaf types in a separate thread eliminates an awkward wait after
     # "Select plugins" is printed.
-    plugin_types = @async leaves(AbstractPlugin)
+    plugin_types = @async leaves(Plugin)
     kwargs = Dict{Symbol, Any}()
 
     default_user = LibGit2.getconfig("github.user", "")
@@ -246,7 +246,7 @@ function interactive_template(; fast::Bool=false)
     menu = MultiSelectMenu(String.(type_names); pagesize=length(type_names))
     selected = collect(request(menu))
     kwargs[:plugins] = convert(
-        Vector{AbstractPlugin},
+        Vector{Plugin},
         map(interactive, getindex(plugin_types, selected)),
     )
 

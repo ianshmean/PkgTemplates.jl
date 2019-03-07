@@ -17,7 +17,7 @@ documentation builds.
     configuration (see
     [here](https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#SSH-Deploy-Keys-1)).
 """
-struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: AbstractPlugin
+struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: Plugin
     assets::Vector{String}
     kwargs::Dict{Symbol, Any}
 

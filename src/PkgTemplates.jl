@@ -28,7 +28,7 @@ export
 """
 A plugin to be added to a [`Template`](@ref), which adds some functionality or integration.
 """
-abstract type AbstractPlugin end
+abstract type Plugin end
 
 include("licenses.jl")
 include("template.jl")

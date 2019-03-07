@@ -7,7 +7,7 @@ CurrentModule = PkgTemplates
 The best and easiest way to contribute to `PkgTemplates` is to write new plugins.
 
 ```@docs
-AbstractPlugin
+Plugin
 ```
 
 ## "Generic" Plugins

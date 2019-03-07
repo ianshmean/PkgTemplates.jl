@@ -1,30 +1,30 @@
 """
-    view(p::AbstractPlugin) -> Dict{String, Any}
+    view(p::Plugin) -> Dict{String, Any}
 
 Return extra substitutions to be made for this plugin.
 See [`substitute`](@ref) for more details.
 """
-view(::AbstractPlugin) = Dict{String, Any}()
+view(::Plugin) = Dict{String, Any}()
 
 """
-    gitignore(p::AbstractPlugin) -> Vector{String}
+    gitignore(p::Plugin) -> Vector{String}
 
 Return patterns that should be added to generated packages' `.gitignore` files.
 """
-gitignore(::AbstractPlugin) = String[]
+gitignore(::Plugin) = String[]
 
 """
-    badges(p::AbstractPlugin) -> Vector{Badge}
+    badges(p::Plugin) -> Vector{Badge}
 
 Return a list of [`Badge`](@ref)s to be added to generated packages' `README.md` files.
 """
-badges(::AbstractPlugin) = Badge[]
+badges(::Plugin) = Badge[]
 
 """
 A plugin which has been generated with [`@plugin`](@ref).
 You should not manually create subtypes!
 """
-abstract type GeneratedPlugin <:AbstractPlugin end
+abstract type GeneratedPlugin <: Plugin end
 
 """
     source(p::GeneratedPlugin) -> Union{String, Nothing}
@@ -155,14 +155,14 @@ end
 Base.show(io::IO, b::Badge) = print(io, "[![$(b.hover)]($(b.image))]($(b.link))")
 
 # Format a plugin's badges as a list of strings, with all substitutions applied.
-function badges(p::AbstractPlugin, user::AbstractString, pkg_name::AbstractString)
+function badges(p::Plugin, user::AbstractString, pkg_name::AbstractString)
     # Give higher priority to replacements defined in the plugin's view.
     subs = merge(Dict("USER" => user, "PKGNAME" => pkg_name), view(p))
     return map(b -> substitute(string(b), subs), badges(p))
 end
 
 """
-    gen_plugin(p::AbstractPlugin, t::Template, pkg_name::AbstractString) -> Vector{String}
+    gen_plugin(p::Plugin, t::Template, pkg_name::AbstractString) -> Vector{String}
 
 Generate any files associated with a plugin.
 
@@ -173,7 +173,7 @@ Generate any files associated with a plugin.
 
 Returns an array of generated file/directory names.
 """
-gen_plugin(::AbstractPlugin, ::Template, ::AbstractString) = String[]
+gen_plugin(::Plugin, ::Template, ::AbstractString) = String[]
 
 function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
     source(p) === nothing && return String[]
@@ -187,7 +187,7 @@ function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
 end
 
 """
-    interactive(T::Type{<:AbstractPlugin}) -> T
+    interactive(T::Type{<:Plugin}) -> T
 
 Interactively create a plugin of type `T`. When this method is implemented for a type, it
 becomes available to [`Template`](@ref)s created with [`interactive_template`](@ref).
