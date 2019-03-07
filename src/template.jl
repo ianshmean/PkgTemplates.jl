@@ -31,6 +31,8 @@ create a template, you can use [`interactive_template`](@ref) instead.
   package will include.
 * `interactive::Bool=false`: When set, creates the template interactively from user input,
   using the previous keywords as a starting point.
+* `fast::Bool=false`: Only applicable when `interactive` is set. Skips prompts for any
+  unsupplied keywords except `user` and `plugins`.
 """
 struct Template
     user::String
@@ -93,19 +95,20 @@ function make_template(::Val{false}; kwargs...)
     )
 end
 
-getkw(kwargs, k) = get(() -> default_kw(Val(k)), kwargs, k)
+getkw(kwargs, k) = get(() -> defaultkw(k), kwargs, k)
 
-default_kw(::Val{:user}) = LibGit2.getconfig("github.user", "")
-default_kw(::Val{:host}) = "https://github.com"
-default_kw(::Val{:license}) = "MIT"
-default_kw(::Val{:authors}) = LibGit2.getconfig("user.name", "")
-default_kw(::Val{:dir}) = Pkg.devdir()
-default_kw(::Val{:julia_version}) = VERSION
-default_kw(::Val{:ssh}) = false
-default_kw(::Val{:manifest}) = false
-default_kw(::Val{:git}) = true
-default_kw(::Val{:develop}) = true
-default_kw(::Val{:plugins}) = Plugin[]
+defaultkw(s::Symbol) = defaultkw(Val(s))
+defaultkw(::Val{:user}) = LibGit2.getconfig("github.user", nothing)
+defaultkw(::Val{:host}) = "https://github.com"
+defaultkw(::Val{:license}) = "MIT"
+defaultkw(::Val{:authors}) = LibGit2.getconfig("user.name", "")
+defaultkw(::Val{:dir}) = Pkg.devdir()
+defaultkw(::Val{:julia_version}) = VERSION
+defaultkw(::Val{:ssh}) = false
+defaultkw(::Val{:manifest}) = false
+defaultkw(::Val{:git}) = true
+defaultkw(::Val{:develop}) = true
+defaultkw(::Val{:plugins}) = Plugin[]
 
 function Base.show(io::IO, t::Template)
     maybe(s::String) = isempty(s) ? "None" : s
@@ -142,99 +145,6 @@ function Base.show(io::IO, t::Template)
         end
     end
 end
-
-"""
-    interactive_template(; fast::Bool=false) -> Template
-
-Interactively create a [`Template`](@ref). If `fast` is set, defaults will be assumed for
-all values except username and plugins.
-"""
-function interactive_template(; fast::Bool=false)
-    default_user = LibGit2.getconfig("github.user", "")
-    print("Username [", isempty(default_user) ? "REQUIRED" : default_user, "]: ")
-    user = readline()
-    kwargs[:user] = if !isempty(user)
-        user
-    elseif !isempty(default_user)
-        default_user
-    else
-        throw(ArgumentError("Username is required"))
-    end
-
-    git = kwargs[:git] = if fast
-        true
-    else
-        default_git = true
-        print("Create a Git repository? [yes]: ")
-        git = readline()
-        isempty(git) ? default_git : uppercase(git) in ["Y", "YES", "T", "TRUE"]
-    end
-
-    kwargs[:host] = if fast || !git
-        "https://github.com"  # If Git isn't enabled, this value never gets used.
-    else
-        default_host = "github.com"
-        print("Code hosting service [$default_host]: ")
-        host = readline()
-        isempty(host) ? default_host : host
-    end
-
-    kwargs[:license] = if fast
-        "MIT"
-    else
-        println("License:")
-        io = IOBuffer()
-        available_licenses(io)
-        licenses = ["" => "", collect(LICENSES)...]
-        menu = RadioMenu(String["None", split(String(take!(io)), "\n")...])
-        # If the user breaks out of the menu with Ctrl-c, the result is -1, the absolute
-        # value of which correponds to no license.
-        first(licenses[abs(request(menu))])
-    end
-
-    # We don't need to ask for authors if there is no license,
-    # because the license is the only place that they matter.
-    kwargs[:authors] = if fast || isempty(kwargs[:license])
-        LibGit2.getconfig("user.name", "")
-    else
-        default_authors = LibGit2.getconfig("user.name", "")
-        default_str = isempty(default_authors) ? "None" : default_authors
-        print("Package author(s) [$default_str]: ")
-        authors = readline()
-        isempty(authors) ? default_authors : authors
-    end
-
-    kwargs[:dir] = if fast
-        Pkg.devdir()
-    else
-        default_dir = Pkg.devdir()
-        print("Path to package directory [$default_dir]: ")
-        dir = readline()
-        isempty(dir) ? default_dir : dir
-    end
-
-    kwargs[:julia_version] = if fast
-        VERSION
-    else
-        default_julia_version = VERSION
-        print("Minimum Julia version [", version_floor(default_julia_version), "]: ")
-        julia_version = readline()
-        isempty(julia_version) ? default_julia_version : VersionNumber(julia_version)
-    end
-
-    kwargs[:ssh] = if fast || !git
-        false
-    else
-        print("Set remote to SSH? [no]: ")
-        uppercase(readline()) in ["Y", "YES", "T", "TRUE"]
-    end
-
-    kwargs[:manifest] = if fast || !git
-        false
-    else
-        print("Commit Manifest.toml? [no]: ")
-        uppercase(readline()) in ["Y", "YES", "T", "TRUE"]
-    end
 
     println("Plugins:")
     # Only include plugin types which have an `interactive` method.

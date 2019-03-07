@@ -35,6 +35,7 @@ include("template.jl")
 include("generate.jl")
 include("plugin.jl")
 include("utils.jl")
+include("interactive.jl")
 include(joinpath("plugins", "generated.jl"))
 include(joinpath("plugins", "documenter.jl"))
 
