@@ -1,8 +1,8 @@
 # The directory containing the default template files.
 const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
 
-# Join a basename to the default directory.
-default_file(files::AbstractString...) = joinpath(DEFAULTS_DIR, files...)
+# Join some paths to the default template directory.
+default_file(paths::AbstractString...) = joinpath(DEFAULTS_DIR, paths...)
 
 """
     gen_file(file::AbstractString, text::AbstractString) -> Int
@@ -13,6 +13,7 @@ Create a new file containing some given text. Always ends the file with a newlin
 * `file::AbstractString`: Path to the file to be created.
 * `text::AbstractString`: Text to write to the file.
 """
+gen_file(t::Tuple{AbstractString, AbstractString}) = gen_file(t...)
 function gen_file(file::AbstractString, text::AbstractString)
     mkpath(dirname(file))
     endswith(text , "\n") || (text *= "\n")
@@ -22,13 +23,8 @@ end
 """
     version_floor(v::VersionNumber=VERSION) -> String
 
-Format the given Julia version.
-
-# Keyword arguments
-* `v::VersionNumber=VERSION`: Version to floor.
-
-Returns "major.minor" for the most recent release version relative to v. For prereleases
-with `v.minor == v.patch == 0`, returns `"major.minor-"`.
+Format the given Julia `version` as `"major.minor"` for the most recent release version
+relative to `v`. For prereleases with `v.minor == v.patch == 0`, returns `"major.minor-"`.
 """
 function version_floor(v::VersionNumber=VERSION)
     return if isempty(v.prerelease) || v.patch > 0
