@@ -3,6 +3,7 @@ using Test
 using Dates
 using LibGit2
 using Pkg
+using Suppressor
 
 using PkgTemplates
 const PT = PkgTemplates
@@ -28,6 +29,7 @@ write(test_file, template_text)
 mktempdir() do temp_dir
     mkdir(joinpath(temp_dir, "dev"))
     pushfirst!(DEPOT_PATH, temp_dir)
+    Pkg.activate(temp_dir)
     global default_dir = Pkg.devdir()
     @testset "PkgTemplates.jl" begin
         include("template.jl")

@@ -76,9 +76,9 @@
             # This requires a bit more setup because there we need a valid Project.toml.
             mktempdir() do dir
                 dir = joinpath(dir, test_pkg)
-                Pkg.generate(dir)
+                @suppress Pkg.generate(dir)
                 t = Template(; user=me, dir=dir)
-                PT.gen_tests(t, dir)
+                @suppress_out PT.gen_tests(t, dir)
                 @test isfile(joinpath(dir, "test", "runtests.jl"))
 
                 # Check that our Project.toml fiddling worked.
