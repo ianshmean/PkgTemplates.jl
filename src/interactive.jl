@@ -6,7 +6,7 @@ function make_template(::Val{true}; kwargs...)
     plugin_types = @async leaves(Plugin)
 
     opts = Dict{Symbol, Any}()
-    fast = get(kwargs, :fasts, false)
+    fast = get(kwargs, :fast, false)
 
     opts[:user] = get(kwargs, :user) do
         prompt_string("Username", defaultkw(:user))
@@ -32,13 +32,10 @@ function make_template(::Val{true}; kwargs...)
             default
         else
             # TODO: Break this out into something reusable?
-            println("License:")
-            choices = ["None"; split(sprint(available_licenses), "\n")]
-            licenses = ["" => ""; pairs(LICENCES)]
-            menu = RadioMenu(choices...)
-            # If the user breaks out of the menu with Ctrl-c, the result is -1, the absolute
-            # value of which correponds to no license.
-            first(licenses[abs(request(menu))])
+            choices = String["None"; split(sprint(available_licenses), "\n")]
+            licenses = ["" => "", pairs(LICENSES)...]
+            menu = RadioMenu(choices)
+            first(licenses[request("License:", menu)])
         end
     end
 
@@ -58,7 +55,11 @@ function make_template(::Val{true}; kwargs...)
 
     opts[:julia_version] = get(kwargs, :julia_version) do
         default = defaultkw(:julia_version)
-        fast ? default : prompt_bool("Minimum Julia version", default)
+        if fast
+            default
+        else
+            VersionNumber(prompt_string("Minimum Julia version", string(default)))
+        end
     end
 
     opts[:ssh] = get(kwargs, :ssh) do
@@ -71,14 +72,20 @@ function make_template(::Val{true}; kwargs...)
         fast || !git ? default : prompt_bool("Commit Manifest.toml", default)
     end
 
-    opts[:plugins] = get(kwargs, :plugins) do
-        # TODO: Break this out into something reusable?
-        println("Select plugins:")
-        types = filter(T -> hasmethod(interactive, (Type{T},)), fetch(plugin_types))
-        # TODO: finish
+    opts[:develop] = get(kwargs, :develop) do
+        default = defaultkw(:develop)
+        fast || !git ? default : prompt_bool("Develop generated packages", default)
     end
 
-    return make_template(Val(false), kwargs...)
+    opts[:plugins] = get(kwargs, :plugins) do
+        # TODO: Break this out into something reusable?
+        types = filter(T -> hasmethod(interactive, (Type{T},)), fetch(plugin_types))
+        menu = MultiSelectMenu(map(string ∘ nameof, types))
+        selected = types[collect(request("Plugins:", menu))]
+        map(interactive, selected)
+    end
+
+    return make_template(Val(false); opts...)
 end
 
 prompt_string(s::AbstractString, default=nothing) = prompt(string, s, default)

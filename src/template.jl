@@ -98,7 +98,11 @@ end
 getkw(kwargs, k) = get(() -> defaultkw(k), kwargs, k)
 
 defaultkw(s::Symbol) = defaultkw(Val(s))
-defaultkw(::Val{:user}) = LibGit2.getconfig("github.user", nothing)
+function defaultkw(::Val{:user})
+    # Can't use nothing as default, see julia#31301.
+    val = LibGit2.getconfig("github.user", "")
+    return isempty(val) ? nothing : val
+end
 defaultkw(::Val{:host}) = "https://github.com"
 defaultkw(::Val{:license}) = "MIT"
 defaultkw(::Val{:authors}) = LibGit2.getconfig("user.name", "")
@@ -144,18 +148,4 @@ function Base.show(io::IO, t::Template)
             print(io, join(split(String(take!(buf)), "\n"), "\n$(spc^2)"))
         end
     end
-end
-
-    println("Plugins:")
-    # Only include plugin types which have an `interactive` method.
-    plugin_types = filter(t -> hasmethod(interactive, (Type{t},)), fetch(plugin_types))
-    type_names = map(t -> split(string(t), ".")[end], plugin_types)
-    menu = MultiSelectMenu(String.(type_names); pagesize=length(type_names))
-    selected = collect(request(menu))
-    kwargs[:plugins] = convert(
-        Vector{Plugin},
-        map(interactive, getindex(plugin_types, selected)),
-    )
-
-    return Template(; git=git, kwargs...)
 end

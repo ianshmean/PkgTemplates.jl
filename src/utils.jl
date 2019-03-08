@@ -85,5 +85,5 @@ end
 # Remove the trailing ".jl" from a package name.
 splitjl(pkg::AbstractString) = endswith(pkg, ".jl") ? pkg[1:end-3] : pkg
 
-# Get a list of all concrete subtypes of some type.
-leaves(T::Type)::Vector{DataType} = isconcretetype(T) ? [T] : vcat(leaves.(subtypes(T))...)
+# Get a list of all non-abstract subtypes of some type.
+leaves(T::Type) = isabstracttype(T) ? vcat(leaves.(subtypes(T))...) : [T]

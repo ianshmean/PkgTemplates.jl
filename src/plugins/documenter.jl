@@ -158,18 +158,33 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     return ["docs/"]
 end
 
-function interactive(T::Type{<:Documenter})
-    print("$T: Enter any Documenter asset files (separated by spaces) [none]: ")
+function interactive(::Type{Documenter{T}}) where T
+    name = "Documenter{$T}"
+
+    print("$name: Enter any Documenter asset files (separated by spaces) [none]: ")
     assets = split(readline())
 
-    println("$T: Enter any extra makedocs key-value pairs (joined by '=') [none]")
+    print("$name: Enter any extra makedocs key-value pairs (joined by '=') [none]\n> ")
     kwargs = Dict{Symbol, Any}()
     line = map(split(readline())) do kv
         k, v = split(kv, "="; limit=2)
         kwargs[Symbol(k)] = eval(Meta.parse(v))
     end
 
-    return T(; assets=assets, kwargs=kwargs)
+    return Documenter{T}(; assets=assets, kwargs=kwargs)
+end
+
+function interactive(::Type{Documenter})
+    types = Dict(
+        "None (local documentation only)" => Nothing,
+        "TravisCI (GitHub Pages)" => TravisCI,
+        "GitLabCI (GitLab Pages)" => GitLabCI,
+    )
+    options = collect(keys(types))
+    menu = RadioMenu(options)
+    T = types[options[request("Documenter: Select integration:", menu)]]
+
+    return interactive(Documenter{T})
 end
 
 function Base.show(io::IO, p::Documenter)
