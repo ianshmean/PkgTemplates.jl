@@ -12,8 +12,6 @@ export
     # Template/package generation.
     Template,
     generate,
-    interactive_template,
-    generate_interactive,
     # Licenses.
     show_license,
     available_licenses,
@@ -24,6 +22,9 @@ export
     GitLabCI,
     Codecov,
     Coveralls
+
+# Belongs in utils, but Template docstring uses it.
+tilde(path::AbstractString) = replace(path, homedir() => "~")
 
 """
 A plugin to be added to a [`Template`](@ref), which adds some functionality or integration.

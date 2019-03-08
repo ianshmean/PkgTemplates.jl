@@ -1,7 +1,13 @@
-# The directory containing the default template files.
-const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
+# Printing utils.
+const TAB = repeat(' ', 4)
+const HALFTAB = repeat(' ', 2)
+const DOT = "• "
+const ARROW = "→ "
+yesno(x::Bool) = x ? "Yes" : "No"
+maybe_string(s::AbstractString) = isempty(s) ? "None" : string(s)
 
-# Join some paths to the default template directory.
+# Default template directory.
+const DEFAULTS_DIR = normpath(joinpath(@__DIR__, "..", "defaults"))
 default_file(paths::AbstractString...) = joinpath(DEFAULTS_DIR, paths...)
 
 """

@@ -61,9 +61,8 @@ function badges(p::GitLabCI)
     return bs
 end
 function interactive(::Type{GitLabCI})
-    cfg = promptconfig(GitLabCI)
-    print("GitLabCI: Enable test coverage analysis [Yes]: ")
-    coverage = !in(uppercase(readline()), ["N", "NO", "FALSE", "NONE"])
+    cfg = prompt_config(GitLabCI)
+    coverage = prompt_bool("GitLabCI: Enable test coverage analysis", true)
     return GitLabCI(cfg; coverage=coverage)
 end
 function Base.show(io::IO, p::GitLabCI)

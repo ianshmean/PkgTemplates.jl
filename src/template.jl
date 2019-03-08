@@ -1,8 +1,7 @@
 """
     Template(; kwargs...) -> Template
 
-Records common information used to generate a package. If you don't wish to manually
-create a template, you can use [`interactive_template`](@ref) instead.
+Records common information used to generate a package.
 
 # Keyword Arguments
 * `user::AbstractString=""`: GitHub (or other code hosting service) username. If left
@@ -19,8 +18,8 @@ create a template, you can use [`interactive_template`](@ref) instead.
 * `authors::Union{AbstractString, Vector{<:AbstractString}}=""`: Names that appear on the
   license. Supply a string for one author or an array for multiple. Similarly to `user`,
   it will take the value of of the global git config's value if it is left unset.
-* `dir::AbstractString=$(replace(Pkg.devdir(), homedir() => "~"))`: Directory in which the
-  package will go. Relative paths are converted to absolute ones at template creation time.
+* `dir::AbstractString=$(tilde(Pkg.devdir()))`: Directory in which the package will go.
+  Relative paths are converted to absolute ones at template creation time.
 * `julia_version::VersionNumber=$VERSION`: Minimum allowed Julia version.
 * `ssh::Bool=false`: Whether or not to use SSH for the remote.
 * `manifest::Bool=false`: Whether or not to commit the `Manifest.toml`.
@@ -48,10 +47,7 @@ struct Template
     plugins::Dict{DataType, <:Plugin}
 end
 
-function Template(; kwargs...)
-    interactive = Val(get(kwargs, :interactive, false))
-    return make_template(interactive; kwargs...)
-end
+Template(; interactive::Bool=false, kwargs...) = make_template(Val(interactive); kwargs...)
 
 function make_template(::Val{false}; kwargs...)
     user = getkw(kwargs, :user)
@@ -115,37 +111,30 @@ defaultkw(::Val{:develop}) = true
 defaultkw(::Val{:plugins}) = Plugin[]
 
 function Base.show(io::IO, t::Template)
-    maybe(s::String) = isempty(s) ? "None" : s
-    spc = "  "
-
     println(io, "Template:")
-    println(io, spc, "→ User: ", maybe(t.user))
-    println(io, spc, "→ Host: ", maybe(t.host))
+    println(io, HALFTAB, ARROW, "User: ", maybe_string(t.user))
+    println(io, HALFTAB, ARROW, "Host: ", maybe_string(t.host))
 
-    print(io, spc, "→ License: ")
+    print(io, HALFTAB, "→ License: ")
     if isempty(t.license)
         println(io, "None")
     else
         println(io, t.license, " ($(t.authors) ", year(today()), ")")
     end
 
-    println(io, spc, "→ Package directory: ", replace(maybe(t.dir), homedir() => "~"))
-    println(io, spc, "→ Minimum Julia version: v", version_floor(t.julia_version))
-    println(io, spc, "→ SSH remote: ", t.ssh ? "Yes" : "No")
-    println(io, spc, "→ Commit Manifest.toml: ", t.manifest ? "Yes" : "No")
-    println(io, spc, "→ Create Git repository: ", t.git ? "Yes" : "No")
-    println(io, spc, "→ Develop packages: ", t.develop ? "Yes" : "No")
+    println(io, HALFTAB, ARROW, "Package directory: ", tilde(maybe_string(t.dir)))
+    println(io, HALFTAB, ARROW, "Minimum Julia version: v", version_floor(t.julia_version))
+    println(io, HALFTAB, ARROW, "SSH remote: ", yesno(t.ssh))
+    println(io, HALFTAB, ARROW, "Commit Manifest.toml: ", yesno(t.manifest))
+    println(io, HALFTAB, ARROW, "Create Git repository: ", yesno(t.git))
+    println(io, HALFTAB, ARROW, "Develop packages: ", yesno(t.develop))
 
-    print(io, spc, "→ Plugins:")
+    print(io, HALFTAB, ARROW, "Plugins:")
     if isempty(t.plugins)
         print(io, " None")
     else
-        for plugin in sort(collect(values(t.plugins)); by=string)
-            println(io)
-            buf = IOBuffer()
-            show(buf, plugin)
-            print(io, spc^2, "• ")
-            print(io, join(split(String(take!(buf)), "\n"), "\n$(spc^2)"))
+        foreach(sort(collect(values(t.plugins)); by=string)) do p
+            print(io, "\n", TAB, DOT, join(split(sprint(show, p), "\n")), "\n", TAB)
         end
     end
 end

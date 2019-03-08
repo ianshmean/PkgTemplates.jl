@@ -67,9 +67,9 @@ function badges(::Documenter{GitLabCI})
     )]
 end
 
-# Add the deploydocs section to make.jl, only for Travis CI.
-maybe_deploydocs(::Documenter, ::Template, ::AbstractString) = nothing
-function maybe_deploydocs(::Documenter{TravisCI}, t::Template, pkg_name::AbstractString)
+# Do integration setup for specific Documenter types.
+gen_integrations(::Documenter, ::Template, ::AbstractString) = nothing
+function gen_integrations(::Documenter{TravisCI}, t::Template, pkg_name::AbstractString)
     make = joinpath(t.dir, pkg_name, "docs", "make.jl")
     s = """
 
@@ -94,7 +94,6 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         proj === nothing ? Pkg.activate() : Pkg.activate(proj)
     end
 
-    tab = repeat(" ", 4)
     assets_string = if isempty(p.assets)
         "[]"
     else
@@ -109,10 +108,10 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         s = "[\n"
         foreach(p.assets) do asset
             cp(asset, joinpath(docs_dir, "src", "assets", basename(asset)))
-            s *= """$(tab^2)"assets/$(basename(asset))",\n"""
+            s *= """$(repeat(TAB, 2))"assets/$(basename(asset))",\n"""
         end
 
-        s * tab * "]"
+        s * TAB * "]"
     end
 
     kwargs_string = if isempty(p.kwargs)
@@ -122,11 +121,12 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         #     key1="val1",
         #     key2="val2",
         #
-        join(string(tab, k, "=", repr(v) for (k, v) in p.kwargs), ",\n")
+        join(string(TAB, k, "=", repr(v) for (k, v) in p.kwargs), ",\n")
     end
 
     make = """
-        using Documenter, $pkg_name
+        using Documenter
+        using $pkg_name
 
         makedocs(;
             modules=[$pkg_name],
@@ -152,10 +152,8 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         """
 
     gen_file(joinpath(docs_dir, "make.jl"), make)
-    maybe_deploydocs(p, t, pkg_name)
+    gen_integrations(p, t, pkg_name)
     gen_file(joinpath(docs_dir, "src", "index.md"), docs)
-
-    return ["docs/"]
 end
 
 function interactive(::Type{Documenter{T}}) where T

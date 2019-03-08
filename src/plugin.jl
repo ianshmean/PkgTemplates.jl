@@ -110,8 +110,11 @@ macro plugin(T, src_dest, exs...)
             $(attrs...)
 
             function $(esc(T))(file::Union{AbstractString, Nothing}=$src; $(map(esc, kws)...))
-                if file !== nothing && !isfile(file)
-                    throw(ArgumentError("File $(abspath(file)) does not exist"))
+                if file !== nothing
+                    file = abspath(expanduser(file))
+                    if !isfile(file)
+                        throw(ArgumentError("File $file does not exist"))
+                    end
                 end
                 return new(file, $dest, $gitignore, $badges, $view, $(map(esc, names)...))
             end
@@ -124,14 +127,14 @@ end
 function Base.show(io::IO, p::GeneratedPlugin)
     T = nameof(typeof(p))
     src = source(p)
-    cfg = src === nothing ? "no file" : replace(src, homedir() => "~")
+    cfg = src === nothing ? "no file" : tilde(src)
     print(io, "$T: Configured with $cfg")
 end
 
 function Base.repr(p::GeneratedPlugin)
     T = nameof(typeof(p))
     src = source(p)
-    cfg = src === nothing ? "nothing" : repr(replace(src, homedir() => "~"))
+    cfg = src === nothing ? "nothing" : repr(tilde(src))
     return "$T($cfg)"
 end
 
@@ -186,30 +189,4 @@ function gen_plugin(p::GeneratedPlugin, t::Template, pkg_name::AbstractString)
     return [destination(p)]
 end
 
-"""
-    interactive(T::Type{<:Plugin}) -> T
-
-Interactively create a plugin of type `T`. When this method is implemented for a type, it
-becomes available to [`Template`](@ref)s created with [`interactive_template`](@ref).
-"""
-interactive(T::Type{<:GeneratedPlugin}) = T(promptconfig(T))
-
-# Interactively get the configuration file path.
-function promptconfig(T::Type{<:GeneratedPlugin})
-    print(nameof(T), ": Enter the config template filename ")
-    default = source(T)
-    if default === nothing
-        print("[None]: ")
-    else
-        print("(\"None\" for no file) [", replace(default, homedir() => "~"), "]: ")
-    end
-
-    file = readline()
-    return if uppercase(file) == "NONE"
-        nothing
-    elseif isempty(file)
-        default
-    else
-        file
-    end
-end
+interactive(T::Type{<:GeneratedPlugin}) = T(prompt_config(T))

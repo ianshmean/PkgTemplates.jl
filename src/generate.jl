@@ -85,23 +85,6 @@ function generate(
     generate(pkg, t, gitconfig=gitconfig)
 end
 
-"""
-    generate_interactive(pkg::AbstractString; fast::Bool=false) -> Template
-
-Interactively create a template, and then generate a package with it. Arguments and
-keywords are used in the same way as in [`generate`](@ref) and
-[`interactive_template`](@ref).
-"""
-function generate_interactive(
-    pkg::AbstractString;
-    fast::Bool=false,
-    gitconfig::Union{GitConfig, Nothing}=nothing,
-)
-    t = interactive_template(; fast=fast)
-    generate(pkg, t; gitconfig=gitconfig)
-    return t
-end
-
 # The make_* functions return (path, text) tuples, which are files that should be written.
 # The gen_* functions write those files, along with any other required file manipulation.
 

@@ -1,8 +1,16 @@
+"""
+    interactive(T::Type{<:Plugin}) -> T
+
+Interactively create a plugin of type `T`. When this method is implemented for a type, it
+becomes available to [`Template`](@ref)s created with [`interactive_template`](@ref)
+(it is not implemented by default).
+"""
+function interactive end
+
 function make_template(::Val{true}; kwargs...)
     @info "Default values are shown in [brackets]"
 
-    # Getting the leaf types in a separate thread eliminates an awkward wait after
-    # "Select plugins" is printed.
+    # Getting the leaf types in a separate thread eliminates an awkward wait.
     plugin_types = @async leaves(Plugin)
 
     opts = Dict{Symbol, Any}()
@@ -105,12 +113,28 @@ end
 
 function prompt(f::Function, s::AbstractString, default)
     required = default === nothing
-    print(s, " [", required ? "REQUIRED" : default, "]: ")
+    default_display = default isa Bool ? yesno(default) : default
+    print(s, " [", required ? "REQUIRED" : default_display, "]: ")
     answer = readline()
     return if isempty(answer)
         required && throw(ArgumentError("This argument is required"))
         default
     else
         f(answer)
+    end
+end
+
+function prompt_config(T::Type{<:GeneratedPlugin})
+    s = "$(nameof(T)): Config template filename"
+    default = source(T)
+    default === nothing && (s *= " (\"None\" for no file)")
+    answer = prompt_string(s, default === nothing ? "None" : tilde(default))
+
+    return if lowercase(answer) == "none"
+        nothing
+    elseif isempty(answer)
+        default
+    else
+        answer
     end
 end
