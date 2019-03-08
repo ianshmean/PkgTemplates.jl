@@ -75,6 +75,7 @@
             Bool,
             BigInt, Int128, Int16, Int32, Int64, Int8,
             UInt128, UInt16, UInt32, UInt64, UInt8,
+            Complex, Irrational, Rational,
         ])
     end
 end

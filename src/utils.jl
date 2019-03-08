@@ -93,3 +93,12 @@ splitjl(pkg::AbstractString) = endswith(pkg, ".jl") ? pkg[1:end-3] : pkg
 
 # Get a list of all non-abstract subtypes of some type.
 leaves(T::Type) = isabstracttype(T) ? vcat(leaves.(subtypes(T))...) : [T]
+
+# Pad all lines but the first to be level with the first.
+function padtail(s::AbstractString, pad::AbstractString)
+    lines = split(s, "\n")
+    hd = popfirst!(lines)
+    map!(line -> pad * line, lines, lines)
+    pushfirst!(lines, hd)
+    return join(lines, "\n")
+end

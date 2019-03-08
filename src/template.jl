@@ -134,7 +134,7 @@ function Base.show(io::IO, t::Template)
         print(io, " None")
     else
         foreach(sort(collect(values(t.plugins)); by=string)) do p
-            print(io, "\n", TAB, DOT, join(split(sprint(show, p), "\n")), "\n", TAB)
+            print(io, "\n", TAB, DOT, padtail(sprint(show, p), TAB * HALFTAB))
         end
     end
 end
