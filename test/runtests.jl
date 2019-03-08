@@ -35,6 +35,7 @@ mktempdir() do temp_dir
         include("utils.jl")
         include("licenses.jl")
         include("files.jl")
+        include("interactive.jl")
     end
 end
 
