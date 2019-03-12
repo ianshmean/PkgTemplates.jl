@@ -94,11 +94,7 @@ end
 getkw(kwargs, k) = get(() -> defaultkw(k), kwargs, k)
 
 defaultkw(s::Symbol) = defaultkw(Val(s))
-function defaultkw(::Val{:user})
-    # Can't use nothing as default, see julia#31301.
-    val = LibGit2.getconfig("github.user", "")
-    return isempty(val) ? nothing : val
-end
+defaultkw(::Val{:user}) = LibGit2.getconfig("github.user", "")
 defaultkw(::Val{:host}) = "https://github.com"
 defaultkw(::Val{:license}) = "MIT"
 defaultkw(::Val{:authors}) = LibGit2.getconfig("user.name", "")

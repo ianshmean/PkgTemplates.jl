@@ -17,7 +17,9 @@ function make_template(::Val{true}; kwargs...)
     fast = get(kwargs, :fast, false)
 
     opts[:user] = get(kwargs, :user) do
-        prompt_string("Username", defaultkw(:user))
+        default = defaultkw(:user)
+        default = isempty(default) ? nothing : default
+        prompt_string("Username", default)
     end
 
     git = opts[:git] = get(kwargs, :git) do
