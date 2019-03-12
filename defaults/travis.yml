@@ -15,10 +15,18 @@ notifications:
 {{#COVERAGE}}
 after_success:
 {{#CODECOV}}
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+  - julia -e '
+      using Pkg
+      Pkg.add("Coverage")
+      using Coverage
+      Codecov.submit(process_folder())'
 {{/CODECOV}}
 {{#COVERALLS}}
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
+  - julia -e '
+      using Pkg
+      Pkg.add("Coverage")
+      using Coverage
+      Coveralls.submit(process_folder())'
 {{/COVERALLS}}
 {{/COVERAGE}}
 {{#GH_PAGES}}
@@ -27,9 +35,9 @@ jobs:
     - stage: Documentation
       julia: {{VERSION}}
       script: julia --project=docs -e '
-          using Pkg;
-          Pkg.develop(PackageSpec(path=pwd()));
-          Pkg.instantiate();
-          include("docs/make.jl");'
+          using Pkg
+          Pkg.develop(PackageSpec(; path=pwd()))
+          Pkg.instantiate()
+          include("docs/make.jl")'
       after_success: skip
 {{/GH_PAGES}}
