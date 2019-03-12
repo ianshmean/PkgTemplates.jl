@@ -20,7 +20,7 @@
         @test occursin("PKGNAME: $test_pkg", text)
         @test occursin("Other", text)
 
-        t = Template(; user=me)
+        t = Template()
         v = t.julia_version
         view["OTHER"] = false
         text = PT.substitute(template_text, t, view)

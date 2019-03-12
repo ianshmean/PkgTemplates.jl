@@ -1,8 +1,8 @@
 @testset "Show methods" begin
     @testset "Template" begin
-        pkg_dir = Sys.isunix() ? replace(default_dir, homedir() => "~") : default_dir
+        pkg_dir = replace(default_dir, homedir() => "~")
 
-        t = Template(; user=me)
+        t = Template()
         expected = """
             Template:
               → User: $me
@@ -18,7 +18,7 @@
             """
         @test sprint(show, t) == rstrip(expected)
 
-        t = Template(; user=me, license="", ssh=true, manifest=true)
+        t = Template(; license="", ssh=true, manifest=true)
         expected = """
             Template:
               → User: $me
@@ -34,7 +34,7 @@
             """
         @test sprint(show, t) == rstrip(expected)
 
-        t = Template(; user=me, plugins=[TravisCI(), Codecov()])
+        t = Template(; plugins=[TravisCI(), Codecov()])
         pattern = r"""
               → Plugins:
                 • .*

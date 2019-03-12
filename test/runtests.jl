@@ -9,12 +9,12 @@ using PkgTemplates
 const PT = PkgTemplates
 
 # Various options to be passed into templates.
-const me = "christopher-dG"
 const test_pkg = "TestPkg"
 const fake_path = "/this/file/does/not/exist"
 const test_dir = mktempdir()
 const test_file = tempname()
 const gitconfig = GitConfig(joinpath(@__DIR__, "gitconfig"))
+const me = LibGit2.getconfig("github.user", LibGit2.get(gitconfig, "github.user", ""))
 const template_text = """
     PKGNAME: {{PKGNAME}}
     VERSION: {{VERSION}}}

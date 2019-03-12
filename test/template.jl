@@ -1,6 +1,6 @@
 @testset "Template" begin
     @testset "Default fields" begin
-        t = Template(; user=me)
+        t = Template()
         @test t.user == me
         @test t.license == "MIT"
         @test t.authors == LibGit2.getconfig("user.name", "")
@@ -25,67 +25,65 @@
         end
 
         @testset "license" begin
-            t = Template(; user=me, license="")
+            t = Template(; license="")
             @test t.license == ""
 
-            t = Template(; user=me, license="MPL")
+            t = Template(; license="MPL")
             @test t.license == "MPL"
-            @test_throws ArgumentError Template(; user=me, license="FakeLicense")
+            @test_throws ArgumentError Template(; license="FakeLicense")
         end
 
         @testset "Authors" begin
-            t = Template(; user=me, authors="Some Guy")
+            t = Template(; authors="Some Guy")
             @test t.authors == "Some Guy"
 
             @testset "Vectors should be comma-joined" begin
-                t = Template(; user=me, authors=["Guy", "Gal"])
+                t = Template(; authors=["Guy", "Gal"])
                 @test t.authors == "Guy, Gal"
             end
         end
 
         @testset "dir" begin
-            t = Template(; user=me, dir=test_dir)
+            t = Template(; dir=test_dir)
             @test t.dir == abspath(test_dir)
 
-            if Sys.isunix()  # ~ means temporary file on Windows, not $HOME.
-                @testset "'~' should be replaced by homedir" begin
-                    t = Template(; user=me, dir="~/$(basename(test_file))")
-                    @test t.dir == joinpath(homedir(), basename(test_file))
-                end
+            @testset "'~' should be replaced by homedir" begin
+                t = Template(; dir="~/$(basename(test_file))")
+                @test t.dir == joinpath(homedir(), basename(test_file))
             end
         end
 
         @testset "julia_version" begin
-            t = Template(; user=me, julia_version=v"0.1.2")
+            t = Template(; julia_version=v"0.1.2")
             @test t.julia_version == v"0.1.2"
         end
 
         @testset "ssh" begin
-            t = Template(; user=me, ssh=true)
+            t = Template(; ssh=true)
             @test t.ssh
         end
 
         @testset "manifest" begin
-            t = Template(; user=me, manifest=true)
+            t = Template(; manifest=true)
             @test t.manifest
         end
 
         @testset "git" begin
-            t = Template(; user=me, git=false)
+            t = Template(; git=false)
             @test !t.git
 
             @testset "Warnings" begin
                 if isempty(LibGit2.getconfig("user.name", ""))
-                    @test_logs (:warn, r"user.name") match_mode=:any Template(; user=me)
-                    @test_logs Template(; user=me, git=false)
+                    @test_logs (:warn, r"user.name") match_mode=:any Template()
+                    @test_logs Template(; git=false)
                 else
-                    @test_logs Template(; user=me)
+                    @test_logs Template()
                 end
             end
         end
 
         @testset "plugins" begin
-            t = Template(; user=me, plugins=[
+            t = Template(; plugins=[
                 Documenter{TravisCI}(),
                 TravisCI(),
                 AppVeyor(),
@@ -97,7 +95,6 @@
 
             @testset "Duplicate plugins should warn" begin
                 t = @test_logs (:warn, r"duplicates") match_mode=:any Template(;
-                    user=me,
                     plugins=[TravisCI(), TravisCI()],
                 )
                 @test haskey(t.plugins, TravisCI)

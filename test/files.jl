@@ -1,5 +1,5 @@
 @testset "File generation" begin
-        t = Template(; user=me, plugins=[
+        t = Template(; plugins=[
             TravisCI(),
             AppVeyor(),
             Codecov(),
@@ -49,7 +49,7 @@
             @test occursin("*.jl.cov", text)
             @test occursin("/docs/build/", text)
 
-            t = Template(; user=me, git=false)
+            t = Template(; git=false)
             @test isempty(PT.make_gitignore(t, dir))
         end
 
@@ -61,7 +61,7 @@
             header = "Copyright (c) $(year(today())) $(t.authors)\n"
             @test text == header * PT.read_license("MIT")
 
-            t = Template(; user=me, license="")
+            t = Template(; license="")
             @test isempty(PT.make_license(t, dir))
         end
     end
@@ -77,7 +77,7 @@
             mktempdir() do dir
                 dir = joinpath(dir, test_pkg)
                 @suppress Pkg.generate(dir)
-                t = Template(; user=me, dir=dir)
+                t = Template(; dir=dir)
                 @suppress_out PT.gen_tests(t, dir)
                 @test isfile(joinpath(dir, "test", "runtests.jl"))
 
