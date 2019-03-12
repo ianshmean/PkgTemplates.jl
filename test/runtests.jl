@@ -14,7 +14,7 @@ const fake_path = "/this/file/does/not/exist"
 const test_dir = mktempdir()
 const test_file = tempname()
 const gitconfig = GitConfig(joinpath(@__DIR__, "gitconfig"))
-const me = LibGit2.getconfig("github.user", LibGit2.get(gitconfig, "github.user", ""))
+const me = LibGit2.get(gitconfig, "github.user", "")
 const template_text = """
     PKGNAME: {{PKGNAME}}
     VERSION: {{VERSION}}}
@@ -25,6 +25,12 @@ const template_text = """
     {{#OTHER}}Other{{/OTHER}}
     """
 write(test_file, template_text)
+
+# Make LibGit2 use our local config file as the global one.
+# This is a hack, but it's the only way to avoid writing to disk.
+# If this issue is dealt with, we could just set $GIT_CONFIG:
+# https://github.com/libgit2/libgit2/issues/4815
+LibGit2.getconfig(name::AbstractString, default) = LibGit2.get(gitconfig, name, default)
 
 mktempdir() do temp_dir
     mkdir(joinpath(temp_dir, "dev"))

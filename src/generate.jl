@@ -1,16 +1,13 @@
 const TEST_UUID = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 """
-    generate(pkg::AbstractString, t::Template)
     generate(t::Template, pkg::AbstractString)
+    generate(pkg::AbstractString, t::Template)
 
 Generate a package named `pkg` from `t`.
 """
-function generate(
-    pkg::AbstractString,
-    t::Template;
-    gitconfig::Union{GitConfig, Nothing}=nothing,
-)
+generate(t::Template, pkg::AbstractString) = generate(pkg, t)
+function generate(pkg::AbstractString, t::Template)
     pkg = splitjl(pkg)
     pkg_dir = joinpath(t.dir, pkg)
     ispath(pkg_dir) && throw(ArgumentError("$pkg_dir already exists"))
@@ -28,14 +25,6 @@ function generate(
             # Initialize the repo.
             repo = LibGit2.init(pkg_dir)
             @info "Initialized Git repo at $pkg_dir"
-
-            if gitconfig !== nothing
-                # Configure the repo.
-                repoconfig = GitConfig(repo)
-                for c in LibGit2.GitConfigIter(gitconfig)
-                    LibGit2.set!(repoconfig, unsafe_string(c.name), unsafe_string(c.value))
-                end
-            end
 
             # Commit and set the remote.
             LibGit2.commit(repo, "Initial commit")
@@ -75,14 +64,6 @@ function generate(
         rm(pkg_dir; recursive=true, force=true)
         rethrow(e)
     end
-end
-
-function generate(
-    t::Template,
-    pkg::AbstractString;
-    gitconfig::Union{GitConfig, Nothing}=nothing,
-)
-    generate(pkg, t, gitconfig=gitconfig)
 end
 
 # The make_* functions return (path, text) tuples, which are files that should be written.
