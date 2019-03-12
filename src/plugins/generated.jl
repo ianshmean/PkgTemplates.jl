@@ -48,16 +48,20 @@ If `coverage` is set, then code coverage analysis is enabled.
 @plugin GitLabCI default_file("gitlab-ci.yml") => ".gitlab-ci.yml" coverage::Bool=true
 gitignore(p::GitLabCI) = p.coverage ? ["*.jl.cov", "*.jl.*.cov", "*.jl.mem"] : String[]
 function badges(p::GitLabCI)
-    bs = [Badge(
-        "Build Status",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
-    )]
-    p.coverage && push!(bs, Badge(
-        "Coverage",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
-        "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
-    ))
+    build, coverage = [
+        Badge(
+            "Build Status",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/build.svg",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/pipelines",
+        ),
+        Badge(
+            "Coverage",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/badges/master/coverage.svg",
+            "https://gitlab.com/{{USER}}/{{PKGNAME}}.jl/commits/master",
+        )
+    ]
+    badges = [build]
+    p.coverage && push(badges, coverage)
     return bs
 end
 function interactive(::Type{GitLabCI})

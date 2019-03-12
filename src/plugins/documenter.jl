@@ -39,6 +39,8 @@ struct Documenter{T<:Union{GitLabCI, TravisCI, Nothing}} <: Plugin
     end
 end
 
+Documenter(; kwargs...) = Documenter{Nothing}(; kwargs...)
+
 # Windows Git also recognizes these paths.
 gitignore(::Documenter) = ["/docs/build/", "/docs/site/"]
 
@@ -60,11 +62,12 @@ function badges(::Documenter)
 end
 
 function badges(::Documenter{GitLabCI})
-    return [Badge(
+    b = Badge(
         "Dev",
         "https://img.shields.io/badge/docs-dev-blue.svg",
         "https://{{USER}}.gitlab.io/{{PKGNAME}}.jl/dev"
-    )]
+    )
+    return [b]
 end
 
 # Do integration setup for specific Documenter types.
@@ -95,7 +98,7 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
     end
 
     assets_string = if isempty(p.assets)
-        "[]"
+        "String[]"
     else
         # Copy the files and create the list.
         # We want something that looks like the following:
@@ -105,7 +108,7 @@ function gen_plugin(p::Documenter, t::Template, pkg_name::AbstractString)
         #     ]
 
         mkpath(joinpath(docs_dir, "src", "assets"))
-        s = "[\n"
+        s = "String[\n"
         foreach(p.assets) do asset
             cp(asset, joinpath(docs_dir, "src", "assets", basename(asset)))
             s *= """$(repeat(TAB, 2))"assets/$(basename(asset))",\n"""
